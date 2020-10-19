@@ -6,6 +6,9 @@
 *.so
 *.dylib
 bin
+testbin
+manager
+setup-envtest.sh
 
 # Test binary, build with `go test -c`
 *.test
