@@ -1,0 +1,7 @@
+apiVersion: cache.jhouse.com/v1alpha1
+kind: NFSProvisioner
+metadata:
+  name: nfsprovisioner-sample
+spec:
+  # Add fields here
+  foo: bar
