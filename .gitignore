@@ -5,8 +5,9 @@
 *.dll
 *.so
 *.dylib
-bin
-testbin
+bin/
+testbin/
+
 manager
 setup-envtest.sh
 

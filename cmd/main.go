@@ -60,6 +60,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var isDevelopmentEnv bool
+
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
@@ -69,11 +70,10 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(isDevelopmentEnv)))
-	
+
 	printVersion()
 
 	setupLog.Info(fmt.Sprintf("Running in development mode: %v", isDevelopmentEnv))
-
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -91,7 +91,7 @@ func main() {
 
 	// Setup Scheme for all api resources
 	mgrScheme := mgr.GetScheme()
-	
+
 	// // Adding the securityv1
 	// if err := securityv1.AddToScheme(mgrScheme); err != nil {
 	// 	setupLog.Error(err, "unable to add security v1 sheme", "security v1 schemem", "NFSProvisioner")

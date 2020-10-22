@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	
+
 	securityv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -60,14 +60,14 @@ type NFSProvisionerReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch
 // +kubebuilder:rbac:groups=policy,resources=podsecuritypolicies,verbs=use
 // +kubebuilder:rbac:groups=core,resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
-//Reconcile turn nothing  test
+// Reconcile is main method for operator
 func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("nfsprovisioner", req.NamespacedName)
@@ -89,13 +89,18 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	// Check if SCC already exists, if not create a new one
+	//https://github.com/openshift/ocs-operator/blob/f10e2314cac2bc16ed5d73da74a0202d0a4cd392/pkg/controller/ocsinitialization/sccs.go
+
 	sccFound := &securityv1.SecurityContextConstraints{}
 	err = r.Get(ctx, types.NamespacedName{Name: "nfs-provisioner", Namespace: ""}, sccFound)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			scc := r.sccForNFSProvisioner(nfsprovisioner)
+
 			log.Info("Creating a new SecurityContextConstraints", "SecurityContextConstraints.Name", scc.Name)
+
 			err := r.Create(ctx, scc)
+
 			if err != nil {
 				log.Error(err, "Failed to create a new SecurityContextConstraints", "SecurityContextConstraints.Name", scc.Name)
 			}
@@ -116,9 +121,10 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	if err != nil && nfsprovisioner.Spec.Pvc != "" {
 		if errors.IsNotFound(err) {
 			pvc := r.pvcForNFSProvisioner(nfsprovisioner)
+
 			log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
-			err := r.Create(ctx, pvc)
-			if err != nil {
+
+			if err := r.Create(ctx, pvc); err != nil {
 				log.Error(err, "Failed to create a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
 			}
 		}
@@ -132,65 +138,63 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new serviceaccount
 		sa := r.serviceAccountForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new Serviceaccount", "Serviceaccount.Namespace", sa.Namespace, "Serviceaccount.Name", sa.Name)
-		err := r.Create(ctx, sa)
-		if err != nil {
+
+		if err := r.Create(ctx, sa); err != nil {
 			log.Error(err, "Failed to create a new Serviceaccount", "Serviceaccount.Namespace", sa.Namespace, "Serviceaccount.Name", sa.Name)
 		}
 	}
 
 	// Check if the rbac(clusterrole/clusterrolebinding/role/rolebinding) already exists, if not create a new one
-	//clusterRole
+	// clusterRole
 	crFound := &rbacv1.ClusterRole{}
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRole, Namespace: ""}, crFound)
 	if err != nil {
 		cr := r.clusterRoleForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new ClusterRole", "ClusterRole.Name", cr.Name)
-		err := r.Create(ctx, cr)
-		if err != nil {
+
+		if err := r.Create(ctx, cr); err != nil {
 			log.Error(err, "Failed to create a ClusterRole for NFSProvisioner", "ClusterRole.Namespace", cr.Namespace, "ClusterRole.Name", cr.Name)
 		}
 	}
 
-	//clusterRoleBinding
+	// clusterRoleBinding
 	crbFound := &rbacv1.ClusterRoleBinding{}
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRoleBinding, Namespace: ""}, crbFound)
 	if err != nil {
 		crb := r.clusterRoleBindingForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new ClusterRoleBinding", "ClusterRoleBinding.Name", crb.Name)
-		err := r.Create(ctx, crb)
-		if err != nil {
+
+		if err := r.Create(ctx, crb); err != nil {
 			log.Error(err, "Failed to create a ClusterRoleBinding for NFSProvisioner", "ClusterRoleBinding.Name", crb.Name)
-			// SCCClient := securityv1typedclient.SecurityContextConstraintsInterface
-			// SCCClient.Get("hostaccess",metav1.GetOptions{})
 		}
 	}
-	//Role
+	// Role
 	roleFound := &rbacv1.Role{}
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.Role, Namespace: nfsprovisioner.Namespace}, roleFound)
 	if err != nil {
 		role := r.roleForNFSProvisioner(nfsprovisioner)
 		log.Info("Creating a new Role", "Role.Namespace", role.Namespace, "Role.Name", role.Name)
-		err := r.Create(ctx, role)
-		if err != nil {
+		if err := r.Create(ctx, role); err != nil {
 			log.Error(err, "Failed to create a Role for NFSProvisioner", "Role.Namespace", role.Namespace, "Role.Name", role.Name)
 		}
 	}
 
-	//RoleBinding
+	// RoleBinding
 	roleBindingFound := &rbacv1.RoleBinding{}
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.RoleBinding, Namespace: nfsprovisioner.Namespace}, roleBindingFound)
 	if err != nil {
 		roleBinding := r.roleBindingForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new RoleBinding", "RoleBinding.Namespace", roleBindingFound.Namespace, "roleBinding.Name", roleBindingFound.Name)
-		err := r.Create(ctx, roleBinding)
-		if err != nil {
+
+		if err := r.Create(ctx, roleBinding); err != nil {
 			log.Error(err, "Failed to create a RoleBinding for NFSProvisioner", "roleBinding.Namespace", roleBindingFound.Namespace, "roleBinding.Name", roleBindingFound.Name)
 		}
 	}
-
-	// Check if the scc(optional) already exists, if not create a new one
-	//https://github.com/openshift/ocs-operator/blob/f10e2314cac2bc16ed5d73da74a0202d0a4cd392/pkg/controller/ocsinitialization/sccs.go
 
 	// Check if the deployment already exists, if not create a new one
 	deployFound := &appsv1.Deployment{}
@@ -198,9 +202,11 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
 		dep := r.deploymentForNFSProvisioner(nfsprovisioner)
-		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		err = r.Create(ctx, dep)
 
+		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = r.Create(ctx, dep); err != nil {
+			log.Error(err, "Failed to create a Deployment for NFSProvisioner", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		}
 	}
 
 	// Check if the service already exists, if not create a new one
@@ -209,30 +215,30 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
 		svc := r.serviceForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new Service", "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
-		err = r.Create(ctx, svc)
-		if err != nil {
+
+		if err = r.Create(ctx, svc); err != nil {
 			log.Error(err, "Failed to create a Service for NFSProvisioner", "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
 		}
 	}
+
 	// Check if the storageclass already exists, if not create a new one
-
-
 	scName := defaults.SCForNFSProvisioner
 
 	if nfsprovisioner.Spec.SCForNFSProvisioner != "" {
 		scName = nfsprovisioner.Spec.SCForNFSProvisioner
 	}
 
-
 	scFound := &storagev1.StorageClass{}
 	err = r.Get(ctx, types.NamespacedName{Name: scName, Namespace: ""}, scFound)
 	if err != nil && errors.IsNotFound(err) && nfsprovisioner.Spec.SCForNFSProvisioner == "" {
 		// Define a new deployment
 		sc := r.storageclassForNFSProvisioner(nfsprovisioner)
+
 		log.Info("Creating a new Storageclass", "Storageclass.Name", sc.Name)
-		err = r.Create(ctx, sc)
-		if err != nil {
+
+		if err = r.Create(ctx, sc); err != nil {
 			log.Error(err, "Failed to create a Storageclass for NFSProvisioner", "Storageclass.Name", sc.Name)
 		}
 	}
@@ -249,13 +255,14 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// registering our finalizer.
-		// if !containsString(nfsprovisioner.ObjectMeta.Finalizers, finalizerName) {
+
 		if !containsString(nfsprovisioner.GetFinalizers(), finalizerName) {
 			log.Info("Adding Finalizer for the NFSProvisioner")
+
 			controllerutil.AddFinalizer(nfsprovisioner, finalizerName)
-			// nfsprovisioner.ObjectMeta.Finalizers = append(nfsprovisioner.ObjectMeta.Finalizers, finalizerName)
 
 			if err := r.Update(context.Background(), nfsprovisioner); err != nil {
+				log.Error(err, "Failed to update CR NFSProvisioner to add finalizer")
 				return ctrl.Result{}, err
 			}
 		}
@@ -266,13 +273,16 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 			if err := r.deleteExternalResources(nfsprovisioner); err != nil {
 				// if fail to delete the external dependency here, return with error
 				// so that it can be retried
+
+				log.Error(err, "Failed to delete external resoureces")
 				return ctrl.Result{}, err
 			}
 
 			// remove our finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(nfsprovisioner, finalizerName)
-			// nfsprovisioner.ObjectMeta.Finalizers = removeString(nfsprovisioner.ObjectMeta.Finalizers, finalizerName)
+
 			if err := r.Update(context.Background(), nfsprovisioner); err != nil {
+				log.Error(err, "Failed to update CR NFSProvisioner with finalizer to remove finalizer")
 				return ctrl.Result{}, err
 			}
 		}
@@ -284,38 +294,37 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	return ctrl.Result{Requeue: true}, nil
 }
 
+// Delete any external resources associated with the nfs server
 func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSProvisioner) error {
-	//
-	// delete any external resources associated with the nfs server
 
-	// To-Do Delete ClusterRole/ClusterRoleBinding
+	// To-Do Delete all pvc that pawned by NFS SC
 	ctx := context.Background()
-
-	clusterRoleName := "nfs-provisioner-runner"
 
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleName,
+			Name: defaults.ClusterRole,
 		}}
-	err := r.Get(ctx, types.NamespacedName{Name: clusterRoleName, Namespace: ""}, clusterRole)
+	err := r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRole, Namespace: ""}, clusterRole)
 	if err == nil {
 		err = r.Delete(ctx, clusterRole, &client.DeleteOptions{})
 		if err != nil {
-			log.Error(err, "Failed to delete ClusterRole for NFSProvisioner", "ClusterRole.Name", clusterRoleName)
+			log.Error(err, "Failed to delete ClusterRole for NFSProvisioner", "ClusterRole.Name", defaults.ClusterRole)
 			return err
 		}
 	}
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleName,
+			Name: defaults.ClusterRoleBinding,
 		}}
 
-	err = r.Get(ctx, types.NamespacedName{Name: clusterRoleName, Namespace: ""}, clusterRoleBinding)
+	err = r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRoleBinding, Namespace: ""}, clusterRoleBinding)
 	if err == nil {
+
 		err = r.Delete(ctx, clusterRoleBinding, &client.DeleteOptions{})
+
 		if err != nil {
-			log.Error(err, "Failed to delete ClusterRoleBinding for NFSProvisioner", "ClusterRoleBinding.Name", clusterRoleName)
+			log.Error(err, "Failed to delete ClusterRoleBinding for NFSProvisioner", "ClusterRoleBinding.Name", defaults.ClusterRoleBinding)
 			return err
 		}
 	}
@@ -353,11 +362,11 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 		nodeSelector = m.Spec.NodeSelector
 	}
 
-	sa := "nfs-provisioner"
+	sa := defaults.ServiceAccount
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.Name,
+			Name:      defaults.Deployment,
 			Namespace: m.Namespace, //the namespace that NFSProvisioner requested.
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -724,7 +733,7 @@ func labelsForNFSProvisioner(name string) map[string]string {
 	return map[string]string{"app": "nfs-provisioner", "nfsprovisioner_cr": name}
 }
 
-//SetupWithManager return error
+// SetupWithManager return error
 func (r *NFSProvisionerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.NFSProvisioner{}).

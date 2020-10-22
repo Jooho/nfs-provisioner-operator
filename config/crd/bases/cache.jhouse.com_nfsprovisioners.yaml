@@ -36,12 +36,17 @@ spec:
         spec:
           description: NFSProvisionerSpec defines the desired state of NFSProvisioner
           properties:
-            hostPath:
-              type: string
             nodeSelector:
               additionalProperties:
                 type: string
               type: object
+            pvc:
+              type: string
+            scForNFS:
+              type: string
+            scForNFSPvc:
+              description: Action-Items
+              type: string
           type: object
         status:
           description: NFSProvisionerStatus defines the observed state of NFSProvisioner

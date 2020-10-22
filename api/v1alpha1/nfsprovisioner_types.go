@@ -20,16 +20,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // NFSProvisionerSpec defines the desired state of NFSProvisioner
 type NFSProvisionerSpec struct {
-	Pvc     string            `json:"pvc,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	Pvc string `json:"pvc,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Action-Items
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	SCForNFSPvc string `json:"scForNFSPvc,omitempty"` //https://golang.org/pkg/encoding/json/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	SCForNFSProvisioner string `json:"scForNFS,omitempty"` //https://golang.org/pkg/encoding/json/
 
 }
@@ -45,6 +46,7 @@ type NFSProvisionerStatus struct {
 // +kubebuilder:subresource:status
 
 // NFSProvisioner is the Schema for the nfsprovisioners API
+// +operator-sdk:csv:customresourcedefinitions:displayName="NFS Provisioner App",resources={{ServiceAccount,v1,nfs-provisioner},{SecurityContextConstraints,v1,nfs-provisioner},{Deployment,v1,nfs-provisioner},{PersistentVolumeClaim,v1,nfs-server},{ClusterRole,v1,nfs-provisioner-runner},{ClusterRoleBinding,v1,nfs-provisioner-runner},{Role,v1,leader-locking-nfs-provisioner},{RoleBinding,v1,leader-locking-nfs-provisioner},{Service,v1,nfs-provisioner},{StorageClass,v1,nfs}}
 type NFSProvisioner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -65,4 +67,3 @@ type NFSProvisionerList struct {
 func init() {
 	SchemeBuilder.Register(&NFSProvisioner{}, &NFSProvisionerList{})
 }
-
