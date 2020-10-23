@@ -36,27 +36,42 @@ spec:
         spec:
           description: NFSProvisionerSpec defines the desired state of NFSProvisioner
           properties:
+            hostPathDir:
+              description: HostPathDir is the folder that NFS server will use.
+              type: string
             nodeSelector:
               additionalProperties:
                 type: string
+              description: NFS server will be running on a specific node by NodeSeletor
               type: object
             pvc:
+              description: PVC resource will be attached to NFS server If there is
+                already pvc created, you can use this param
               type: string
             scForNFS:
+              description: StorageClass name gor NFS provisioner This operator will
+                create a StorageClass for NFS provisioner named "nfs". If you want
+                to change it, you set this param.
               type: string
             scForNFSPvc:
-              description: Action-Items
+              description: Action-Items StorageClass for NFS PVC If you want to delegate
+                this operator to create a pvc for NFS Server from StorageClass, you
+                set this param for the storageclass name
               type: string
           type: object
         status:
           description: NFSProvisionerStatus defines the observed state of NFSProvisioner
           properties:
+            error:
+              description: Error show error messages briefly
+              type: string
             nodes:
               description: Nodes are the names of the NFS pods
               items:
                 type: string
               type: array
           required:
+          - error
           - nodes
           type: object
       type: object

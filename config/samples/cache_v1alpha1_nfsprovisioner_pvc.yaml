@@ -3,4 +3,4 @@ kind: NFSProvisioner
 metadata:
   name: nfsprovisioner-sample
 spec:
-  scForNFSPvc: local-sc
+  pvc: nfs-server

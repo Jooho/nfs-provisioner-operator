@@ -22,14 +22,27 @@ import (
 
 // NFSProvisionerSpec defines the desired state of NFSProvisioner
 type NFSProvisionerSpec struct {
+	// HostPathDir is the folder that NFS server will use.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	HostPathDir string `json:"hostPathDir,omitempty"`
+
+	// PVC resource will be attached to NFS server
+	// If there is already pvc created, you can use this param
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	Pvc string `json:"pvc,omitempty"`
+
+	// NFS server will be running on a specific node by NodeSeletor
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Action-Items
+	// StorageClass for NFS PVC
+	// If you want to delegate this operator to create a pvc for NFS Server from StorageClass, you set this param for the storageclass name
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	SCForNFSPvc string `json:"scForNFSPvc,omitempty"` //https://golang.org/pkg/encoding/json/
+
+	// StorageClass name gor NFS provisioner
+	// This operator will create a StorageClass for NFS provisioner named "nfs". If you want to change it, you set this param.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	SCForNFSProvisioner string `json:"scForNFS,omitempty"` //https://golang.org/pkg/encoding/json/
 
@@ -40,6 +53,8 @@ type NFSProvisionerStatus struct {
 
 	// Nodes are the names of the NFS pods
 	Nodes []string `json:"nodes"`
+	// Error show error messages briefly
+	Error string `json:"error"`
 }
 
 // +kubebuilder:object:root=true

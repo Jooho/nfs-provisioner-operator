@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/log"
@@ -47,6 +48,25 @@ type NFSProvisionerReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+func validate(m *cachev1alpha1.NFSProvisioner) error {
+	pvc := m.Spec.Pvc
+	sc := m.Spec.SCForNFSPvc
+	hostPathDir := m.Spec.HostPathDir
+	if pvc != "" && (sc != "" || hostPathDir != "") {
+		return fmt.Errorf("scForPvc or hostPathDir can not set with Pvc")
+	}
+
+	if hostPathDir != "" && (sc != "" || pvc != "") {
+		return fmt.Errorf("scForPvc or Pvc can not set with hostPathDir")
+	}
+
+	if sc != "" && (pvc != "" || hostPathDir != "") {
+		return fmt.Errorf("Pvc or hostPathDir can not set with scForPvc")
+	}
+
+	return nil
+}
+
 // +kubebuilder:rbac:groups=cache.jhouse.com,resources=nfsprovisioners,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cache.jhouse.com,resources=nfsprovisioners/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cache.jhouse.com,resources=nfsprovisioners/finalizers,verbs=update
@@ -60,8 +80,8 @@ type NFSProvisionerReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
-// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy,resources=podsecuritypolicies,verbs=use
 // +kubebuilder:rbac:groups=core,resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
@@ -88,6 +108,21 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Validate checking
+	if err = validate(nfsprovisioner); err != nil {
+		log.Error(err, fmt.Sprintf("pvc: %s | sc: %s | hostPathDir: %s", nfsprovisioner.Spec.Pvc, nfsprovisioner.Spec.SCForNFSPvc, nfsprovisioner.Spec.HostPathDir))
+
+		nfsprovisioner.Status.Error = fmt.Sprintf("pvc: %s | sc: %s | hostPathDir: %s", nfsprovisioner.Spec.Pvc, nfsprovisioner.Spec.SCForNFSPvc, nfsprovisioner.Spec.HostPathDir)
+		nfsprovisioner.Status.Nodes = []string{}
+		err := r.Status().Update(ctx, nfsprovisioner)
+		if err != nil {
+			log.Error(err, "Failed to update nfsprovisioner status")
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, err
+	}
+
 	// Check if SCC already exists, if not create a new one
 	//https://github.com/openshift/ocs-operator/blob/f10e2314cac2bc16ed5d73da74a0202d0a4cd392/pkg/controller/ocsinitialization/sccs.go
 
@@ -103,6 +138,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 			if err != nil {
 				log.Error(err, "Failed to create a new SecurityContextConstraints", "SecurityContextConstraints.Name", scc.Name)
+				return ctrl.Result{}, err
 			}
 		}
 
@@ -110,25 +146,31 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 	// Check if the PVC already exists, if not create a new one
 	pvcName := defaults.Pvc
+	storageType := "PVC"
 
 	if nfsprovisioner.Spec.Pvc != "" {
 		pvcName = nfsprovisioner.Spec.Pvc
 	}
 
-	pvcFound := &corev1.PersistentVolumeClaim{}
-	err = r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: nfsprovisioner.Namespace}, pvcFound)
+	if nfsprovisioner.Spec.HostPathDir != "" {
+		storageType = "HOSTPATH"
 
-	if err != nil && nfsprovisioner.Spec.Pvc != "" {
-		if errors.IsNotFound(err) {
-			pvc := r.pvcForNFSProvisioner(nfsprovisioner)
+	} else {
+		pvcFound := &corev1.PersistentVolumeClaim{}
+		err = r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: nfsprovisioner.Namespace}, pvcFound)
 
-			log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				pvc := r.pvcForNFSProvisioner(nfsprovisioner)
 
-			if err := r.Create(ctx, pvc); err != nil {
-				log.Error(err, "Failed to create a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+				log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+
+				if err := r.Create(ctx, pvc); err != nil {
+					log.Error(err, "Failed to create a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+					return ctrl.Result{}, err
+				}
 			}
 		}
-
 	}
 
 	// Check if the serviceaccount already exists, if not create a new one
@@ -143,6 +185,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err := r.Create(ctx, sa); err != nil {
 			log.Error(err, "Failed to create a new Serviceaccount", "Serviceaccount.Namespace", sa.Namespace, "Serviceaccount.Name", sa.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -157,6 +200,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err := r.Create(ctx, cr); err != nil {
 			log.Error(err, "Failed to create a ClusterRole for NFSProvisioner", "ClusterRole.Namespace", cr.Namespace, "ClusterRole.Name", cr.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -170,6 +214,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err := r.Create(ctx, crb); err != nil {
 			log.Error(err, "Failed to create a ClusterRoleBinding for NFSProvisioner", "ClusterRoleBinding.Name", crb.Name)
+			return ctrl.Result{}, err
 		}
 	}
 	// Role
@@ -180,6 +225,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		log.Info("Creating a new Role", "Role.Namespace", role.Namespace, "Role.Name", role.Name)
 		if err := r.Create(ctx, role); err != nil {
 			log.Error(err, "Failed to create a Role for NFSProvisioner", "Role.Namespace", role.Namespace, "Role.Name", role.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -193,6 +239,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err := r.Create(ctx, roleBinding); err != nil {
 			log.Error(err, "Failed to create a RoleBinding for NFSProvisioner", "roleBinding.Namespace", roleBindingFound.Namespace, "roleBinding.Name", roleBindingFound.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -201,11 +248,12 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.Deployment, Namespace: nfsprovisioner.Namespace}, deployFound)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
-		dep := r.deploymentForNFSProvisioner(nfsprovisioner)
+		dep := r.deploymentForNFSProvisioner(nfsprovisioner, storageType)
 
 		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		if err = r.Create(ctx, dep); err != nil {
 			log.Error(err, "Failed to create a Deployment for NFSProvisioner", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -220,6 +268,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err = r.Create(ctx, svc); err != nil {
 			log.Error(err, "Failed to create a Service for NFSProvisioner", "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -240,6 +289,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		if err = r.Create(ctx, sc); err != nil {
 			log.Error(err, "Failed to create a Storageclass for NFSProvisioner", "Storageclass.Name", sc.Name)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -248,10 +298,10 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	const finalizerName = "nfsprovisioner.finalizers.jhouse.io"
 
 	// examine DeletionTimestamp to determine if object is under deletion
-	isNFSProvisionerdMarkedToBeDeleted := nfsprovisioner.GetDeletionTimestamp() != nil
+	// isNFSProvisionerdMarkedToBeDeleted := nfsprovisioner.GetDeletionTimestamp() != nil
 
 	// if nfsprovisioner.ObjectMeta.DeletionTimestamp.IsZero() {
-	if isNFSProvisionerdMarkedToBeDeleted {
+	if nfsprovisioner.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// registering our finalizer.
@@ -279,6 +329,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 			}
 
 			// remove our finalizer from the list and update it.
+			log.Info("Removing Finalizer for the NFSProvisioner")
 			controllerutil.RemoveFinalizer(nfsprovisioner, finalizerName)
 
 			if err := r.Update(context.Background(), nfsprovisioner); err != nil {
@@ -306,6 +357,7 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSP
 		}}
 	err := r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRole, Namespace: ""}, clusterRole)
 	if err == nil {
+		log.Info("Deleting ClusterRole for NFSProvisioner")
 		err = r.Delete(ctx, clusterRole, &client.DeleteOptions{})
 		if err != nil {
 			log.Error(err, "Failed to delete ClusterRole for NFSProvisioner", "ClusterRole.Name", defaults.ClusterRole)
@@ -320,7 +372,7 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSP
 
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRoleBinding, Namespace: ""}, clusterRoleBinding)
 	if err == nil {
-
+		log.Info("Deleting ClusterRoleBinding for NFSProvisioner")
 		err = r.Delete(ctx, clusterRoleBinding, &client.DeleteOptions{})
 
 		if err != nil {
@@ -353,7 +405,8 @@ func removeString(slice []string, s string) (result []string) {
 }
 
 // deploymentForNFSProvisioner returns a NFSProvisioner Deployment object
-func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.NFSProvisioner) *appsv1.Deployment {
+func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.NFSProvisioner, storageType string) *appsv1.Deployment {
+
 	ls := labelsForNFSProvisioner(m.Name)
 
 	nodeSelector := defaults.NodeSelector
@@ -361,8 +414,13 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 	if m.Spec.NodeSelector != nil {
 		nodeSelector = m.Spec.NodeSelector
 	}
+	if storageType == "PVC" {
+		nodeSelector = map[string]string{}
+	}
 
 	sa := defaults.ServiceAccount
+
+	volumeSourceSpec := getVolumeSpec(m, storageType)
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -448,26 +506,53 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 					NodeSelector:       nodeSelector,
 					ServiceAccountName: sa,
 					Volumes: []corev1.Volume{{
-						Name: "export-volume",
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: defaults.Pvc,
-							},
-						},
-					}},
+						Name:         "export-volume",
+						VolumeSource: *volumeSourceSpec,
+					},
+					},
 				},
 			},
 		},
 	}
+
+	// dep.Spec.Template.Spec.Volumes[0] = getVolumeSpec(m, storageType)
+
 	// Set NFSProvisioner instance as the owner and controller
 	ctrl.SetControllerReference(m, dep, r.Scheme)
 	return dep
 }
 
+func getVolumeSpec(m *cachev1alpha1.NFSProvisioner, t string) *corev1.VolumeSource {
+	hostPathDir := m.Spec.HostPathDir
+
+	pvcName := defaults.Pvc
+
+	hostPathType := corev1.HostPathDirectory
+
+	if m.Spec.Pvc != "" {
+		pvcName = m.Spec.Pvc
+	}
+
+	if t == "HOSTPATH" {
+		log.Info("StorageType is HOSTPATH")
+		return &corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: hostPathDir,
+				Type: &hostPathType,
+			}}
+	}
+
+	log.Info("StorageType is PVC")
+	return &corev1.VolumeSource{
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: pvcName,
+		}}
+}
+
 //https://github.com/openshift/origin/blob/master/docs/proposals/security-context-constraints.md
 
 func (r *NFSProvisionerReconciler) sccForNFSProvisioner(m *cachev1alpha1.NFSProvisioner) *securityv1.SecurityContextConstraints {
-	sccName := "nfs-provisioner"
+	sccName := defaults.SecurityContextContrants
 	scc := &securityv1.SecurityContextConstraints{
 
 		ObjectMeta: metav1.ObjectMeta{
@@ -491,7 +576,7 @@ func (r *NFSProvisionerReconciler) sccForNFSProvisioner(m *cachev1alpha1.NFSProv
 		SELinuxContext: securityv1.SELinuxContextStrategyOptions{
 			Type: securityv1.SELinuxStrategyMustRunAs,
 		},
-		Users: []string{"system:serviceaccount:nfs-provisioner:nfs-provisioner"},
+		Users: []string{"system:serviceaccount:" + m.Namespace + ":" + defaults.ServiceAccount},
 		SupplementalGroups: securityv1.SupplementalGroupsStrategyOptions{
 			Type: securityv1.SupplementalGroupsStrategyRunAsAny,
 		},
@@ -515,7 +600,7 @@ func (r *NFSProvisionerReconciler) pvcForNFSProvisioner(m *cachev1alpha1.NFSProv
 	pvc := &corev1.PersistentVolumeClaim{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nfs",
+			Name:      defaults.Pvc,
 			Namespace: m.Namespace, //the namespace that NFSProvisioner requested.
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -538,7 +623,7 @@ func (r *NFSProvisionerReconciler) serviceAccountForNFSProvisioner(m *cachev1alp
 	sa := &corev1.ServiceAccount{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nfs-provisioner",
+			Name:      defaults.ServiceAccount,
 			Namespace: m.Namespace, //the namespace that NFSProvisioner requested.
 		},
 	}
@@ -552,7 +637,7 @@ func (r *NFSProvisionerReconciler) clusterRoleForNFSProvisioner(m *cachev1alpha1
 	cr := &rbacv1.ClusterRole{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nfs-provisioner-runner",
+			Name: defaults.ClusterRole,
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -589,16 +674,16 @@ func (r *NFSProvisionerReconciler) clusterRoleBindingForNFSProvisioner(m *cachev
 	crb := &rbacv1.ClusterRoleBinding{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "run-provisioner-runner",
+			Name: defaults.ClusterRoleBinding,
 		},
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
-			Name:      "nfs-provisioner",
+			Name:      defaults.ServiceAccount,
 			Namespace: m.Namespace,
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     "nfs-provisioner-runner",
+			Name:     defaults.ClusterRole,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
@@ -612,7 +697,7 @@ func (r *NFSProvisionerReconciler) roleForNFSProvisioner(m *cachev1alpha1.NFSPro
 	role := &rbacv1.Role{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "leader-locking-nfs-provisioner",
+			Name:      defaults.Role,
 			Namespace: m.Namespace,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -637,17 +722,17 @@ func (r *NFSProvisionerReconciler) roleBindingForNFSProvisioner(m *cachev1alpha1
 	rolebinding := &rbacv1.RoleBinding{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "leader-locking-nfs-provisioner",
+			Name:      defaults.RoleBinding,
 			Namespace: m.Namespace,
 		},
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
-			Name:      "nfs-provisioner",
+			Name:      defaults.ServiceAccount,
 			Namespace: m.Namespace,
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
-			Name:     "leader-locking-nfs-provisioner",
+			Name:     defaults.Role,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
@@ -662,7 +747,7 @@ func (r *NFSProvisionerReconciler) serviceForNFSProvisioner(m *cachev1alpha1.NFS
 	svc := &corev1.Service{
 
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nfs-provisioner",
+			Name:      defaults.Service,
 			Namespace: m.Namespace,
 			Labels:    ls,
 		},
