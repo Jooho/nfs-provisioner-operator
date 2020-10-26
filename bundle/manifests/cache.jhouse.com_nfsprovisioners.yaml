@@ -1,0 +1,77 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: nfsprovisioners.cache.jhouse.com
+spec:
+  group: cache.jhouse.com
+  names:
+    kind: NFSProvisioner
+    listKind: NFSProvisionerList
+    plural: nfsprovisioners
+    singular: nfsprovisioner
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: NFSProvisioner is the Schema for the nfsprovisioners API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: NFSProvisionerSpec defines the desired state of NFSProvisioner
+          properties:
+            hostPathDir:
+              description: HostPathDir is the folder that NFS server will use.
+              type: string
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NFS server will be running on a specific node by NodeSeletor
+              type: object
+            pvc:
+              description: PVC resource will be attached to NFS server If there is already pvc created, you can use this param
+              type: string
+            scForNFS:
+              description: StorageClass name gor NFS provisioner This operator will create a StorageClass for NFS provisioner named "nfs". If you want to change it, you set this param.
+              type: string
+            scForNFSPvc:
+              description: Action-Items StorageClass for NFS PVC If you want to delegate this operator to create a pvc for NFS Server from StorageClass, you set this param for the storageclass name
+              type: string
+          type: object
+        status:
+          description: NFSProvisionerStatus defines the observed state of NFSProvisioner
+          properties:
+            error:
+              description: Error show error messages briefly
+              type: string
+            nodes:
+              description: Nodes are the names of the NFS pods
+              items:
+                type: string
+              type: array
+          required:
+          - error
+          - nodes
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
