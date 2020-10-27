@@ -2,7 +2,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: '[]'
+    alm-examples: '[{ "apiVersion": "cache.jhouse.com/v1alpha1", "kind": "NFSProvisioner", "metadata": { "name": "nfsprovisioner-sample" }, "spec": { "nodeSelector": { "app": "nfs-provisioner" }, "scForNFSPvc": "local-sc", "SCForNFSProvisioner": "nfs" } }, { "apiVersion": "cache.jhouse.com/v1alpha1", "kind": "NFSProvisioner", "metadata": { "name": "nfsprovisioner-sample" }, "spec": { "nodeSelector": { "kubernetes.io/hostname": "worker-0.bell.tamlab.brq.redhat.com" }, "hostPathDir": "/home/core/test" } }]'
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
@@ -55,21 +55,33 @@ spec:
         name: nfs-server
         version: v1
       specDescriptors:
-      - description: HostPathDir is the folder that NFS server will use.
-        displayName: Host Path Dir
+      - description: HostPathDir is the direcotry where NFS server will use.
+        displayName: HostPath directory
         path: hostPathDir
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:string
+        - urn:alm:descriptor:io.kubernetes:custom
       - description: NFS server will be running on a specific node by NodeSeletor
         displayName: Node Selector
         path: nodeSelector
-      - description: PVC resource will be attached to NFS server If there is already pvc created, you can use this param
-        displayName: Pvc
+      - description: PVC Name is the PVC resource that already created for NFS server. Do not set StorageClass name with this param. Then, operator will fail to deploy NFS Server.
+        displayName: PVC Name
         path: pvc
-      - description: StorageClass name gor NFS provisioner This operator will create a StorageClass for NFS provisioner named "nfs". If you want to change it, you set this param.
-        displayName: SCFor NFSProvisioner
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:string
+        - urn:alm:descriptor:io.kubernetes:custom
+      - description: StorageClass Name for NFS Provisioner is the StorageClass name that NFS Provisioner will use. Default value is `nfs`
+        displayName: StorageClass Name for NFS Provisioner
         path: scForNFS
-      - description: Action-Items StorageClass for NFS PVC If you want to delegate this operator to create a pvc for NFS Server from StorageClass, you set this param for the storageclass name
-        displayName: SCFor NFSPvc
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:string
+        - urn:alm:descriptor:io.kubernetes:custom
+      - description: torageClass Name for NFS server will provide a PVC for NFS server. Do not set PVC name with this param. Then, operator will fail to deploy NFS Server
+        displayName: StorageClass Name for NFS server
         path: scForNFSPvc
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:string
+        - urn:alm:descriptor:io.kubernetes:custom
       version: v1alpha1
   description: |
     This operator deploy NFS server with local storage and also provide provisioner for storageClass.
