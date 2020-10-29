@@ -597,6 +597,12 @@ func (r *NFSProvisionerReconciler) pvcForNFSProvisioner(m *cachev1alpha1.NFSProv
 		scName = m.Spec.SCForNFSPvc
 	}
 
+	pvcSize := defaults.StorageSize
+
+	if m.Spec.StorageSize != "" {
+		pvcSize = m.Spec.StorageSize
+	}
+
 	pvc := &corev1.PersistentVolumeClaim{
 
 		ObjectMeta: metav1.ObjectMeta{
@@ -607,7 +613,7 @@ func (r *NFSProvisionerReconciler) pvcForNFSProvisioner(m *cachev1alpha1.NFSProv
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("10Gi"),
+					corev1.ResourceStorage: resource.MustParse(pvcSize),
 				},
 			},
 			StorageClassName: &scName,

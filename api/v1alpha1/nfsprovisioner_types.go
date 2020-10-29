@@ -31,6 +31,11 @@ type NFSProvisionerSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PVC Name",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
 	Pvc string `json:"pvc,omitempty"`
 
+	// StorageSize is the PVC size for NFS server.
+	// By default, it sets 10G.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Storage Size",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
+	StorageSize string `json:"storageSize,omitempty"`
+
 	// torageClass Name for NFS server will provide a PVC for NFS server.
 	// Do not set PVC name with this param. Then, operator will fail to deploy NFS Server
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="StorageClass Name for NFS server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string","urn:alm:descriptor:io.kubernetes:custom"}
