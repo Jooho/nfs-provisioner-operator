@@ -82,6 +82,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:string
         - urn:alm:descriptor:io.kubernetes:custom
+      - description: StorageSize is the PVC size for NFS server. By default, it sets 10G.
+        displayName: Storage Size
+        path: storageSize
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:string
+        - urn:alm:descriptor:io.kubernetes:custom
       version: v1alpha1
   description: |
     This operator deploy NFS server with local storage and also provide provisioner for storageClass.

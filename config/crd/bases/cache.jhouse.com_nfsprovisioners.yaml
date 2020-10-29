@@ -58,6 +58,10 @@ spec:
                 NFS server. Do not set PVC name with this param. Then, operator will
                 fail to deploy NFS Server
               type: string
+            storageSize:
+              description: StorageSize is the PVC size for NFS server. By default,
+                it sets 10G.
+              type: string
           type: object
         status:
           description: NFSProvisionerStatus defines the observed state of NFSProvisioner
