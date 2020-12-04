@@ -35,5 +35,4 @@ const (
 var (
 	// NodeSelector is for the node where NFS server will be running
 	NodeSelector = map[string]string{"app": "nfs-provisioner"}
-
 )
