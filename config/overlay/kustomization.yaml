@@ -1,0 +1,39 @@
+bases:
+- ../default
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ./serviceaccount.yaml
+
+transformers:
+- ./prefixsuffixTransformer.yaml
+
+patches:
+- patch: |-
+    - op: add
+      path: "/spec/template/spec/serviceAccountName"
+      value: "sa"
+  target:
+    kind: Deployment
+
+- patch: |-
+    - op: replace
+      path: "/metadata/name"
+      value: "sa"
+  target:
+    kind: ServiceAccount
+
+- patch: |-
+    - op: replace
+      path: "/subjects/0/name"
+      value: "sa"
+  target:
+    kind: RoleBinding
+
+- patch: |-
+    - op: replace
+      path: "/subjects/0/name"
+      value: "sa"
+  target:
+    kind: ClusterRoleBinding

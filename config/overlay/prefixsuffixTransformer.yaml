@@ -1,0 +1,12 @@
+apiVersion: builtin
+kind: PrefixSuffixTransformer
+metadata:
+  name: notImportantHere
+prefix: nfs-provisioner-operator-
+fieldSpecs:
+  - path: /spec/template/spec/serviceAccountName
+    kind: Deployment
+  - path: /subjects/name
+    kind: RoleBinding
+  - path: /subjects/name
+    kind: ClusterRoleBinding
