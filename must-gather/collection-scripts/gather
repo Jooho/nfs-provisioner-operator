@@ -1,0 +1,19 @@
+#!/bin/bash
+source configs/commons.sh
+
+# Create a directory where all data will be stored
+mkdir -p ${BASE_COLLECTION_PATH}
+
+# Call other gather scripts
+gather_namespaced_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
+#gather_operand_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
+
+
+echo "deleting empty files" >> ${BASE_COLLECTION_PATH}/gather-debug.log
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+
+# force disk flush to ensure that all data gathered is accessible in the copy container
+sync
+
+
+
