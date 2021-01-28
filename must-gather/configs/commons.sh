@@ -12,6 +12,9 @@ BASE_COLLECTION_PATH="/opt/must-gather-root/must-gather"
 # Current Namespace
 INSTALL_NAMESPACE="${NAMESPACE}"
 
+# Set TOKEN
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
 # Gather Data since this value
 SINCE_TIME=0
 
@@ -22,4 +25,14 @@ SED_DELIMITER=$(echo -en "\001");
 # Replace strings
 safe_replace () {
     sed "s${SED_DELIMITER}${1}${SED_DELIMITER}${2}${SED_DELIMITER}g"
+}
+
+is_not_nothing () {
+    resource=$1
+    if [[ z$(oc get ${resource} --ignore-not-found) == 'z' ]]
+    then
+        return 1
+    else 
+        return 0
+    fi
 }

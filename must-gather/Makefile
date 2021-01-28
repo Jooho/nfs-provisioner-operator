@@ -13,7 +13,7 @@ MUST_GATHER_FULL_IMAGE_NAME=$(IMAGE_REGISTRY)/$(REGISTRY_NAMESPACE)/$(MUST_GATHE
 
 check-must-gather:
 	@echo "Checking the Shellscript"
-	shellcheck -P ./collection-scripts/*
+	shellcheck -x -P ./collection-scripts/*
        
 build-must-gather:
 	@echo "Building the $(OPERATOR_NAME)-must-gather image"
