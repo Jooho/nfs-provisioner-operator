@@ -1,1 +1,26 @@
-echo "operand_resource called"
+#!/bin/bash
+source configs/commons.sh
+
+# Create a directory where all data will be stored
+mkdir -p "${BASE_COLLECTION_PATH}"
+
+# Use PWD as base path if no argument is passed
+if [ "${BASE_COLLECTION_PATH}" = "" ]; then
+    BASE_COLLECTION_PATH=$(pwd)
+fi
+
+# Paths for data store
+OPERAND_SCOPE_DATA_PATH="${BASE_COLLECTION_PATH}/operand-scoped-resources"
+
+# If you want to gather k8s objects that are not collected basiclly, you can add the objects in gather_namespaced_resource. <Find the following part> 
+######## Additional Resources #########
+# oc_gets+=("")
+# oc_descs+=("")
+# oc_yamls+=("")
+###################################
+
+# Update here
+
+
+sync
+
