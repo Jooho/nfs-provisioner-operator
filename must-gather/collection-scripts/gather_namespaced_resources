@@ -128,17 +128,17 @@ then
 
     if is_not_nothing "${oc_desc}" 
     then
-      echo "collecting dump of oc desc command  ${oc_desc}" | tee -a "$#BASE_COLLECTION_PATH}/gather-debug.log"
+      echo "collecting dump of oc desc command  ${oc_desc}" | tee -a "${BASE_COLLECTION_PATH}/gather-debug.log"
 
       OC_DESC_DIR="${NAMESPACE_SCOPE_DATA_PATH}/oc_desc"
       mkdir -p "${OC_DESC_DIR}"
 
-      target_resource_list=$(oc get "${oc_desc}" -n "${INSTALL_NAMESPACE}" -no-headers -o name)
+      target_resource_list=$(oc get "${oc_desc}" -n "${INSTALL_NAMESPACE}" --no-headers -o name)
 
       for item in ${target_resource_list} 
       do 
         name=$(awk -F'/' '{print $2}'<<< "${item}")
-        { oc describe "${item}" -n "${INSTALL_NAMESPACE}"; } >> "${OC_DESC_DIR}/${name}" 2>&1
+        { oc describe ${item} -n ${INSTALL_NAMESPACE}; } >> "${OC_DESC_DIR}/${name}" 2>&1
       done
     fi
   done
@@ -152,17 +152,17 @@ then
 
     if is_not_nothing "${oc_desc} "
     then
-      echo "collecting dump(yaml) of oc obejct ${oc_yaml}" | tee -a "$#BASE_COLLECTION_PATH}/gather-debug.log"
+      echo "collecting dump(yaml) of oc obejct ${oc_yaml}" | tee -a "${BASE_COLLECTION_PATH}/gather-debug.log"
 
       YAML_DIR="${NAMESPACE_SCOPE_DATA_PATH}/yaml/${oc_yaml}"
       mkdir -p "${YAML_DIR}"
       
-      target_resource_list=$(oc get "${oc_yaml}" -n "${INSTALL_NAMESPACE}" -no-headers -o name)
+      target_resource_list=$(oc get "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --no-headers -o name)
 
       for item in ${target_resource_list} 
       do 
         name=$(awk -F'/' '{print $2}'<<< "${item}")
-        { oc describe "${item}" ; } >> "${YAML_DIR}/${name}.yaml" 2>&1
+        { oc describe ${item} ; } >> "${YAML_DIR}/${name}.yaml" 2>&1
       done
     fi
   done
@@ -186,10 +186,10 @@ then
       for container in ${containers}
       do
         mkdir -p "${POD_LOG_DIR}/containers"
-        { oc logs "${name}" --since-time "${SINCE_TIME}" -c "${container}" -n "$#INSTALL_NAMESPACE}" ; } >> "${POD_LOG_DIR}/containers/${container}.log" 2>&1
+        { oc logs ${name} --since ${SINCE_TIME} -c ${container} -n ${INSTALL_NAMESPACE} ; } >> "${POD_LOG_DIR}/containers/${container}.log" 2>&1
       done    
     else
-      { oc logs "${name}" --since-time  "${SINCE_TIME}" -n "${INSTALL_NAMESPACE}" ; } >> "${POD_LOG_DIR}/pod.log" 2>&1
+      { oc logs ${name} --since ${SINCE_TIME} -n ${INSTALL_NAMESPACE} ; } >> "${POD_LOG_DIR}/pod.log" 2>&1
     fi
   done
 fi
@@ -199,7 +199,7 @@ if is_not_nothing event
 then  
   echo "Run the Collection of Events yaml from all containers for event-filtor.html" | tee -a "${BASE_COLLECTION_PATH}/gather-debug.log"
   mkdir -p "${NAMESPACE_SCOPE_DATA_PATH}/event_filter_data"
-  curl -k -H "Accept: application/yaml" -H "authorization: Bearer ${TOKEN}" "https://$#KUBERNETES_SERVICE_HOST}/api/v1/namespaces/${INSTALL_NAMESPACE}/events?limit=500" -o "${NAMESPACE_SCOPE_DATA_PATH}/event_filter_data/events.yaml" 
+  curl -k -H "Accept: application/yaml" -H "authorization: Bearer ${TOKEN}" "https://${KUBERNETES_SERVICE_HOST}/api/v1/namespaces/${INSTALL_NAMESPACE}/events?limit=500" -o "${NAMESPACE_SCOPE_DATA_PATH}/event_filter_data/events.yaml" 
 fi
 
 sync
