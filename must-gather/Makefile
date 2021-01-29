@@ -10,6 +10,7 @@ MUST_GATHER_IMAGE_NAME ?=$(DEFAULT_MUST_GATHER_IMAGE_NAME)
 IMAGE_TAG ?=$(DEFAULT_IMAGE_TAG)
 MUST_GATHER_FULL_IMAGE_NAME=$(IMAGE_REGISTRY)/$(REGISTRY_NAMESPACE)/$(MUST_GATHER_IMAGE_NAME):$(IMAGE_TAG)
 
+.PHONY: check-must-gather build-must-gather push-must-gather deploy-must-gather must-gather
 
 check-must-gather:
 	@echo "Checking the Shellscript"
