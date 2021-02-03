@@ -14,7 +14,7 @@ MUST_GATHER_FULL_IMAGE_NAME=$(IMAGE_REGISTRY)/$(REGISTRY_NAMESPACE)/$(MUST_GATHE
 
 check-must-gather:
 	@echo "Checking the Shellscript"
-	shellcheck -x -P ./collection-scripts/*
+	./hack/shellcheck-test.sh
        
 build-must-gather:
 	@echo "Building the $(OPERATOR_NAME)-must-gather image"
@@ -27,6 +27,5 @@ push-must-gather:
 deploy-must-gather:
 	@echo "Deploying the $(OPERATOR_NAME) must-gather image"
 	isv-install must-gather $(MUST_GATHER_FULL_IMAGE_NAME)
-
 
 must-gather:  build-must-gather push-must-gather

@@ -1,35 +1,6 @@
 #!/bin/bash
 # Default gathering data
-# - Yaml File
-#   - K8s resources
-#     - Namespace
-#     - Deployment/DeploymentConfig
-#     - Replicaset
-#     - Pod
-#     - Service
-#     - Route
-#     - PersistentVolumeClaim
-#   - OLM resources
-#     - Subscription
-#     - ClusterServiceVersion(CSV)
-#     - Installplan
-#     - OperatorGroup
-#     - Operator (=> permission issue)
-#     - CR (==> ISV responsible)
-# - Get Cmd
-#   - K8s resources
-#     - Deployment/DeploymentConfig
-#     - Replicaset
-#     - Pod
-#     - Service
-#     - Route
-#     - PersistentVolumeClaim
-#     - Event
-#
-# - Logs Cmd
-#   - K8s resources
-#     - Pod
-#
+# This script will be managed by Red Hat but if you customize, then you must test if this script is working or not before you publish your must-gather image. 
 
 source configs/commons.sh
 
@@ -54,10 +25,11 @@ oc_gets+=("deploymentconfigs")
 oc_gets+=("deployments")
 oc_gets+=("replicasets")       
 oc_gets+=("replicationcontrollers")     
-oc_gets+=("services")      
 oc_gets+=("configmaps")       
-oc_gets+=("events")
+oc_gets+=("services")      
 oc_gets+=("routes")
+oc_gets+=("persistentvolumeclaim")
+oc_gets+=("events")
 oc_gets+=("csvs")
 oc_gets+=("installplans")
 oc_gets+=("subscriptions")
@@ -78,6 +50,7 @@ oc_yamls+=("replicationcontrollers")
 oc_yamls+=("configmaps")
 oc_yamls+=("services")
 oc_yamls+=("routes")
+oc_yamls+=("persistentvolumeclaim")
 oc_yamls+=("csvs")
 oc_yamls+=("installplans")
 oc_yamls+=("subscriptions")
@@ -133,7 +106,7 @@ then
       OC_DESC_DIR="${NAMESPACE_SCOPE_DATA_PATH}/oc_desc"
       mkdir -p "${OC_DESC_DIR}"
 
-      target_resource_list=$(oc get "${oc_desc}" -n "${INSTALL_NAMESPACE}" --no-headers -o name)
+      target_resource_list=$(oc get "${oc_desc}" -n "${INSTALL_NAMESPACE}" --no-headers -o name|grep -v must-gather)
 
       for item in ${target_resource_list} 
       do 
@@ -157,7 +130,7 @@ then
       YAML_DIR="${NAMESPACE_SCOPE_DATA_PATH}/yaml/${oc_yaml}"
       mkdir -p "${YAML_DIR}"
       
-      target_resource_list=$(oc get "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --no-headers -o name)
+      target_resource_list=$(oc get "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --no-headers -o name|grep -v must-gather)
 
       for item in ${target_resource_list} 
       do 

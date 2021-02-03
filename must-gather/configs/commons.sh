@@ -9,11 +9,25 @@ CUSTOM_RESOURCE_LIST=("NFSProvisioner")       #Syntax ("NFSProvisioenr" "NFSTest
 # Folder where tar ball will be stored
 BASE_COLLECTION_PATH="/opt/must-gather-root/must-gather"
 
+# absolute path
+BASE_DIR="$(cd "$(dirname ./ )" && pwd)"
+SCRIPT_DIR="$(cd "${BASE_DIR}/collection-scripts" && pwd)"
+CONFIG_DIR="$(cd "${BASE_DIR}/configs" && pwd)"
+
+# necessary binaries will be stored.
+ADDITIONAL_BINARY_PATH="${BASE_DIR}/exteranl_bin"
+
 # Current Namespace
 INSTALL_NAMESPACE="${NAMESPACE}"
 
 # Set TOKEN
-TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+TOKEN_PATH="/var/run/secrets/kubernetes.io/serviceaccount/token"
+if [ -f ${TOKEN_PATH} ] 
+then 
+    TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+else 
+    TOKEN=""
+fi
 
 # Gather Data since this value
 SINCE_TIME=0
@@ -36,6 +50,3 @@ is_not_nothing () {
         return 0
     fi
 }
-doksa43
-bokso
-sunhye353
