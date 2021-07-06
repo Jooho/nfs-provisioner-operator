@@ -20,14 +20,14 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooho/nfs-provisioner-oeprator:latest
-    createdAt: "2000-10-26T12:00:00Z"
+    containerImage: quay.io/jooho/nfs-provisioner-oeprator:0.0.1
+    createdAt: "2020-01-25T12:00:00Z"
     description: Create and manage NFS Server and Provisioner
-    operators.operatorframework.io/builder: operator-sdk-v1.2.0
+    operators.operatorframework.io/builder: operator-sdk-v1.4.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
-  name: nfs-provisioner-operator.v0.0.1
+  name: nfs-provisioner-operator.v0.0.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -342,20 +342,6 @@ spec:
             spec:
               containers:
               - args:
-                - --metrics-addr=127.0.0.1:8080
-                - --enable-leader-election
-                command:
-                - /manager
-                image: quay.io/jooholee/nfs-provisioner-operator:0.0.1
-                name: manager
-                resources:
-                  limits:
-                    cpu: 100m
-                    memory: 30Mi
-                  requests:
-                    cpu: 100m
-                    memory: 20Mi
-              - args:
                 - --secure-listen-address=0.0.0.0:8443
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
@@ -366,6 +352,20 @@ spec:
                 - containerPort: 8443
                   name: https
                 resources: {}
+              - args:
+                - --metrics-addr=127.0.0.1:8080
+                - --enable-leader-election
+                command:
+                - /manager
+                image: quay.io/jooholee/nfs-provisioner-operator:0.0.2
+                name: manager
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 500Mi
+                  requests:
+                    cpu: 100m
+                    memory: 100Mi
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -420,4 +420,4 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  version: 0.0.1
+  version: 0.0.2

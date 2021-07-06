@@ -1,5 +1,7 @@
-# Current Operator version
-VERSION ?= 0.0.1
+ 
+# Include various params
+include $(shell pwd)/env
+
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Options for 'bundle-build'
@@ -12,7 +14,10 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest-2
+IMG=quay.io/jooholee/${OP_NAME}:${TAG}
+INDEX_IMG=quay.io/jooholee/${OP_NAME}-index:${TAG}
+BUNDLE_IMG=quay.io/jooholee/${OP_NAME}-bundle:${TAG}
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -127,3 +132,28 @@ bundle-build:
 .PHONY: bundle-push
 bundle-push:
 	podman push $(BUNDLE_IMG) 
+
+
+# Test
+.PHONY: test-op-local test-op-cluster test-bundle test-index 
+deploy-op-local: install
+	oc project ${NAMESPACE} || oc new-project ${NAMESPACE} 
+	make run ENABLE_WEBHOOKS=false
+
+deploy-nfs-local: install
+	./hack/scripts/deploy-nfs-local.sh
+
+deploy-nfs-cluster: install
+	./hack/scripts/deploy-nfs-cluster.sh
+
+test-pvc:
+	./hack/scripts/test-pvc.sh
+
+test-pod:
+	./hack/scripts/test-pod.sh
+
+test-rw:
+	./hack/scripts/test-rw.sh
+
+test-cleanup:
+	./hack/scripts/test-cleanup.sh

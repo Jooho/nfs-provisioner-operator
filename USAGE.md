@@ -75,7 +75,7 @@ spec:
     namespace: openshift-marketplace
   spec:
     sourceType: grpc
-    image: quay.io/jooholee/nfs-provisioner-operator-index:0.0.1 
+    image: quay.io/jooholee/nfs-provisioner-operator-index:0.0.2 
 EOF
 ~~~
 
@@ -110,7 +110,7 @@ spec:
   name: nfs-provisioner-operator
   source: nfsprovisioner-catalog
   sourceNamespace: openshift-marketplace
-  startingCSV: nfs-provisioner-operator.v0.0.1
+  startingCSV: nfs-provisioner-operator.v0.0.2
 ~~~
 
 **Deploy NFSProvisioner Operand**
