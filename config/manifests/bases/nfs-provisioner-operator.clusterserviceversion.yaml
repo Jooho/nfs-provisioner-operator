@@ -3,7 +3,7 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: '[{ "apiVersion": "cache.jhouse.com/v1alpha1", "kind": "NFSProvisioner", "metadata": { "name": "nfsprovisioner-sample" }, "spec": { "nodeSelector": { "app": "nfs-provisioner" }, "scForNFSPvc": "local-sc", "SCForNFSProvisioner": "nfs" } }, { "apiVersion": "cache.jhouse.com/v1alpha1", "kind": "NFSProvisioner", "metadata": { "name": "nfsprovisioner-sample" }, "spec": { "nodeSelector": { "kubernetes.io/hostname": "worker-0.bell.tamlab.brq.redhat.com" }, "hostPathDir": "/home/core/test" } }]'
-    capabilities: Seamless Upgrades
+    capabilities: Basic Install
     categories: Storage
     certified: "false"
     containerImage: quay.io/jooho/nfs-provisioner-oeprator:0.0.1

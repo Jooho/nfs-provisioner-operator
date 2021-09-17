@@ -17,7 +17,7 @@ metadata:
           }
         }
       ]
-    capabilities: Seamless Upgrades
+    capabilities: Basic Install
     categories: Storage
     certified: "false"
     containerImage: quay.io/jooho/nfs-provisioner-oeprator:0.0.1
