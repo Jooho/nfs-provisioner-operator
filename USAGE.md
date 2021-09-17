@@ -1,14 +1,15 @@
 # How to use NFS Provisioner Operator
-### Using local storage for NFS server
+## Manual way
+### Create local storage for NFS server
 
-[Local Storage Operator Doc](https://docs.openshift.com/container-platform/4.5/storage/persistent_storage/persistent-storage-local.html#local-storage-install_persistent-storage-local)
+[Local Storage Operator Document](https://docs.openshift.com/container-platform/4.5/storage/persistent_storage/persistent-storage-local.html#local-storage-install_persistent-storage-local)
 
 You need to login in OpenShift with  `cluster-admin` user before you follow the below commands
 
 *Deploy Local Storage*
 **Create NS/OperatorGorup/Subscription**
 ~~~
-export product-verion=4.5      # <=== Update
+export product-verion=4.8      # <=== Update
 echo"
 apiVersion: v1
 kind: Namespace
@@ -55,7 +56,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - worker-2.bell.tamlab.brq.redhat.com                 # <==== Update
+          - worker-2.openshiftcluster.com                 # <==== Update
   storageClassDevices:
     - storageClassName: "local-sc"
       volumeMode: Filesystem 
@@ -63,6 +64,7 @@ spec:
       devicePaths: 
         - /dev/vdb" | oc create -f -                            #<===== Update
 ~~~
+
 
 ### NFS Provisioner
 **Create `CatalogSource`**
@@ -114,6 +116,7 @@ spec:
 ~~~
 
 **Deploy NFSProvisioner Operand**
+- local storage
 ~~~
 echo "
 apiVersion: cache.jhouse.com/v1alpha1
@@ -123,6 +126,20 @@ metadata:
 spec:
   storageSize: "1G"
   scForNFSPvc: local-sc
+  SCForNFSProvisioner: nfs"|oc create -f -
+~~~
+
+- gp2 storageclass on AWS
+~~~
+echo "
+apiVersion: cache.jhouse.com/v1alpha1
+kind: NFSProvisioner
+metadata:
+  name: nfsprovisioner-sample
+  namespace: nfsprovisioner-operator
+spec:
+  storageSize: "1G"
+  scForNFSPvc: gp2
   SCForNFSProvisioner: nfs"|oc create -f -
 ~~~
 
