@@ -88,8 +88,7 @@ func validate(m *cachev1alpha1.NFSProvisioner) error {
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // Reconcile is main method for operator
-func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("nfsprovisioner", req.NamespacedName)
 
 	// Fetch the NFSProvisioner instance
@@ -281,7 +280,7 @@ func (r *NFSProvisionerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 	scFound := &storagev1.StorageClass{}
 	err = r.Get(ctx, types.NamespacedName{Name: scName, Namespace: ""}, scFound)
-	if err != nil && errors.IsNotFound(err) && nfsprovisioner.Spec.SCForNFSProvisioner == "" {
+	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
 		sc := r.storageclassForNFSProvisioner(nfsprovisioner)
 
@@ -829,4 +828,5 @@ func (r *NFSProvisionerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.NFSProvisioner{}).
 		Complete(r)
+
 }

@@ -1,16 +1,17 @@
 module github.com/jooho/nfs-provisioner-operator
 
-go 1.13
+go 1.16
 
 require (
-	github.com/go-logr/logr v0.1.0
-	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.1
-	github.com/openshift/api v3.9.0+incompatible
-	github.com/prometheus/common v0.4.1
-	k8s.io/api v0.18.6
-	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v0.18.6
-	sigs.k8s.io/controller-runtime v0.6.2
+	github.com/go-logr/logr v0.4.0
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.13.0
+	github.com/openshift/api v0.0.0-20210901140736-d8ed1449662d
+	github.com/prometheus/common v0.26.0
+	k8s.io/api v0.22.1
+	k8s.io/apiextensions-apiserver v0.22.1 // indirect
+	k8s.io/apimachinery v0.22.1
+	k8s.io/client-go v0.22.1
+	sigs.k8s.io/controller-runtime v0.9.2
 
 )
