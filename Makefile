@@ -223,8 +223,8 @@ deploy-op-local: install podman-build
 	oc project ${NAMESPACE} || oc new-project ${NAMESPACE} 
 	make run ENABLE_WEBHOOKS=false
 
-deploy-nfs-local: install
-	./hack/scripts/deploy-nfs-local.sh
+deploy-nfs-cr: install
+	./hack/scripts/deploy-nfs-cr.sh
 
 deploy-nfs-cluster: install
 	./hack/scripts/deploy-nfs-cluster.sh

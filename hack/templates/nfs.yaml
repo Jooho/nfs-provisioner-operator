@@ -4,5 +4,5 @@ metadata:
   name: nfsprovisioner-sample
 spec:
   storageSize: "1G"
-  scForNFSPvc: local-sc
+  scForNFSPvc: gp2
   scForNFS: nfs
