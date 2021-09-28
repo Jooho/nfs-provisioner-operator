@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: nfs-provisioner-operator-cs
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay.io/jooholee/nfs-provisioner-operator-index:0.0.1 
