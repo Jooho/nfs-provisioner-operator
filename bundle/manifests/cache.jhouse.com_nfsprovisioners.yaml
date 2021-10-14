@@ -52,7 +52,7 @@ spec:
                   name that NFS Provisioner will use. Default value is `nfs`
                 type: string
               scForNFSPvc:
-                description: torageClass Name for NFS server will provide a PVC for
+                description: StorageClass Name for NFS server will provide a PVC for
                   NFS server. Do not set PVC name with this param. Then, operator
                   will fail to deploy NFS Server
                 type: string
