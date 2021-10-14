@@ -36,7 +36,7 @@ type NFSProvisionerSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Storage Size",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
 	StorageSize string `json:"storageSize,omitempty"`
 
-	// torageClass Name for NFS server will provide a PVC for NFS server.
+	// StorageClass Name for NFS server will provide a PVC for NFS server.
 	// Do not set PVC name with this param. Then, operator will fail to deploy NFS Server
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="StorageClass Name for NFS server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string","urn:alm:descriptor:io.kubernetes:custom"}
 	SCForNFSPvc string `json:"scForNFSPvc,omitempty"` //https://golang.org/pkg/encoding/json/

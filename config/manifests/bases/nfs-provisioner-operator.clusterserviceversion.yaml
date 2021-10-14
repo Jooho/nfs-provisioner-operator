@@ -86,7 +86,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:string
         - urn:alm:descriptor:io.kubernetes:custom
-      - description: torageClass Name for NFS server will provide a PVC for NFS server.
+      - description: StorageClass Name for NFS server will provide a PVC for NFS server.
           Do not set PVC name with this param. Then, operator will fail to deploy
           NFS Server
         displayName: StorageClass Name for NFS server
