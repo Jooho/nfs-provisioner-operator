@@ -15,7 +15,8 @@ then
 fi
 
 # Deploy NFS
-oc create -f ${TEMPLATE_DIR}/nfs.yaml
+# oc create -f ${TEMPLATE_DIR}/nfs.yaml
+oc create -f ${TEMPLATE_DIR}/nfs-hostpath.yaml
 sleep 5
 
 ${SCRIPTS_DIR}/check-nfs-ready.sh

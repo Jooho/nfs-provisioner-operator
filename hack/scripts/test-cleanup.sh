@@ -3,7 +3,8 @@ source ./env.sh
 # Clean All Objects
 oc delete -f ${TEMPLATE_DIR}/pod.yaml
 oc delete -f ${TEMPLATE_DIR}/pvc.yaml
-oc delete -f ${TEMPLATE_DIR}/nfs.yaml
+# oc delete -f ${TEMPLATE_DIR}/nfs.yaml
+oc delete -f ${TEMPLATE_DIR}/nfs-hostpath.yaml --wait
 
 manager_count=$(oc get pod -l control-plane=controller-manager -n ${NAMESPACE}|wc -l)
 if [[ ${manager_count} != 0 ]]; then make undeploy; fi
