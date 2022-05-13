@@ -11,7 +11,7 @@ metadata:
             "name": "nfsprovisioner-sample"
           },
           "spec": {
-            "SCForNFSProvisioner": "nfs",
+            "scForNFS": "nfs",
             "scForNFSPvc": "local-sc",
             "storageSize": "1G"
           }
@@ -20,14 +20,14 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooho/nfs-provisioner-oeprator:0.0.3
+    containerImage: quay.io/jooholee/nfs-provisioner-operator:0.0.3
     createdAt: "2020-01-25T12:00:00Z"
     description: Create and manage NFS Server and Provisioner
-    operators.operatorframework.io/builder: operator-sdk-v1.11.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.19.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
-  name: nfs-provisioner-operator.v0.0.3
+  name: nfs-provisioner-operator.v0.0.4
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -339,7 +339,9 @@ spec:
           - create
         serviceAccountName: default
       deployments:
-      - name: nfs-provisioner-operator-controller-manager
+      - label:
+          control-plane: controller-manager
+        name: nfs-provisioner-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -368,7 +370,7 @@ spec:
                 - --enable-leader-election
                 command:
                 - /manager
-                image: quay.io/jooholee/nfs-provisioner-operator:0.0.3
+                image: quay.io/jooholee/nfs-provisioner-operator:0.0.4
                 name: manager
                 resources:
                   limits:
@@ -435,5 +437,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.2
-  version: 0.0.3
+  replaces: nfs-provisioner-operator.v0.0.3
+  version: 0.0.4

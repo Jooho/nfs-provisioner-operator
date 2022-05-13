@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/prometheus/common/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -346,7 +345,7 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 // Delete any external resources associated with the nfs server
 func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSProvisioner) error {
-
+	log := r.Log.WithName("deleteExternalResource")
 	// To-Do Delete all pvc that pawned by NFS SC
 	ctx := context.Background()
 
@@ -419,7 +418,7 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 
 	sa := defaults.ServiceAccount
 
-	volumeSourceSpec := getVolumeSpec(m, storageType)
+	volumeSourceSpec := r.getVolumeSpec(m, storageType)
 
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -521,7 +520,8 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 	return dep
 }
 
-func getVolumeSpec(m *cachev1alpha1.NFSProvisioner, t string) *corev1.VolumeSource {
+func (r *NFSProvisionerReconciler) getVolumeSpec(m *cachev1alpha1.NFSProvisioner, t string) *corev1.VolumeSource {
+	log := r.Log.WithName("deleteExternalResource")
 	hostPathDir := m.Spec.HostPathDir
 
 	pvcName := defaults.Pvc

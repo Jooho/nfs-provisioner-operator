@@ -2,7 +2,6 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": "4.9"}]'
     alm-examples: '[{ "apiVersion": "cache.jhouse.com/v1alpha1", "kind": "NFSProvisioner",
       "metadata": { "name": "nfsprovisioner-sample" }, "spec": { "nodeSelector": {
       "app": "nfs-provisioner" }, "scForNFSPvc": "local-sc", "scForNFS": "nfs" } },
@@ -13,7 +12,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooholee/nfs-provisioner-oeprator:0.0.3
+    containerImage: quay.io/jooholee/nfs-provisioner-operator:0.0.3
     createdAt: "2020-01-25T12:00:00Z"
     description: Create and manage NFS Server and Provisioner
     operators.operatorframework.io/builder: operator-sdk-v1.12.0
@@ -138,5 +137,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.2
+  replaces: nfs-provisioner-operator.v0.0.3
   version: 0.0.0

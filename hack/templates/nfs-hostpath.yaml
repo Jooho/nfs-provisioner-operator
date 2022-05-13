@@ -1,0 +1,9 @@
+apiVersion: cache.jhouse.com/v1alpha1
+kind: NFSProvisioner
+metadata:
+  name: nfsprovisioner-sample
+spec:
+  nodeSelector: 
+      app: nfs-provisioner
+  hostPathDir: "/home/core/nfs"
+  scForNFS: nfs

@@ -16,7 +16,8 @@ fi
 make deploy 
 
 # Deploy NFS
-oc create -f ${TEMPLATE_DIR}/nfs.yaml -n ${NAMESPACE}
+# oc create -f ${TEMPLATE_DIR}/nfs.yaml -n ${NAMESPACE}
+oc create -f ${TEMPLATE_DIR}/nfs-hostpath.yaml -n ${NAMESPACE}
 sleep 5
 
 

@@ -23,6 +23,9 @@ fi
 
 if [[ ${UPGRADE_TEST} == '' ]]
 then
+  # Change replace version to OLD version
+  sed "s/.*replaces.*/  replaces: nfs-provisioner-operator.v${CUSTOM_OLD_VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
+
   # Build/Push test NFS Operator
   make podman-build podman-push
 
@@ -32,24 +35,25 @@ then
   # Build/Push test Index image
   make index-build index-push
 fi
-# Copy catalogSource yaml
-cp ${TEMPLATE_DIR}/nfs-cs.yaml /tmp/nfs-cs.yaml
-
-# Copy/Update OperatorGroup yaml
-cp ${TEMPLATE_DIR}/nfs-og.yaml /tmp/nfs-og.yaml
-sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-og.yaml
-
-# Copy Subscription yaml
-cp ${TEMPLATE_DIR}/nfs-subs.yaml /tmp/nfs-subs.yaml
-sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-subs.yaml
 
 #Update CatalogSource/Subscription yaml
 if [[ ${UPGRADE_TEST} == '' ]]
 then
+  # Copy catalogSource yaml
+  cp ${TEMPLATE_DIR}/nfs-cs.yaml /tmp/nfs-cs.yaml
   sed "s/0.0.1/${VERSION}/g" -i /tmp/nfs-cs.yaml
+
+  # Copy/Update OperatorGroup yaml
+  cp ${TEMPLATE_DIR}/nfs-og.yaml /tmp/nfs-og.yaml
+  sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-og.yaml
+
+  # Copy Subscription yaml
+  cp ${TEMPLATE_DIR}/nfs-subs.yaml /tmp/nfs-subs.yaml
   sed "s/0.0.1/${VERSION}/g" -i /tmp/nfs-subs.yaml
+  sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-subs.yaml
 else
-  sed "s/0.0.1/${CUSTOM_OLD_VERSION}/g" -i /tmp/nfs-cs.yaml
+  # Install Community Latest Version 
+  cp ${TEMPLATE_DIR}/nfs-subs-prod.yaml /tmp/nfs-subs.yaml
   sed "s/0.0.1/${CUSTOM_OLD_VERSION}/g" -i /tmp/nfs-subs.yaml
 fi
 
@@ -64,7 +68,8 @@ oc get subscription nfs-provisioner-operator -n ${NAMESPACE}
 if [[ $? != 0 ]]; then oc create -f/tmp/nfs-subs.yaml; fi
 
 # Deploy NFS
-oc create -f ${TEMPLATE_DIR}/nfs.yaml
+# oc create -f ${TEMPLATE_DIR}/nfs.yaml
+oc create -f ${TEMPLATE_DIR}/nfs-hostpath.yaml
 sleep 5
 
 

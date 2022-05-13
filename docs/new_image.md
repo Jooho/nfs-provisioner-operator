@@ -85,11 +85,6 @@ It deploys old index image to deploy old operator first and then deploy the new 
 - Set variable
   ~~~
   UPGRADE_TEST=TRUE make deploy-nfs-cluster-olm
-
-  # Set replaces version
-  vi config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
-  replaces: 
-	  nfs-provisioner-operator.v0.0.2
   ~~~
 
 - Cmds
