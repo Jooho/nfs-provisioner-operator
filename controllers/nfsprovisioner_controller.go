@@ -435,8 +435,9 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
-						Image: "quay.io/kubernetes_incubator/nfs-provisioner:latest",
-						Name:  "nfs-provisioner",
+						Image:           m.Spec.NFSImageConfiguration.Image,
+						ImagePullPolicy: m.Spec.NFSImageConfiguration.ImagePullPolicy,
+						Name:            "nfs-provisioner",
 						Ports: []corev1.ContainerPort{
 							{Name: "nfs",
 								ContainerPort: 2049},
@@ -495,7 +496,6 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 								},
 							},
 						}},
-						ImagePullPolicy: "IfNotPresent",
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "export-volume",
 							MountPath: "/export",
