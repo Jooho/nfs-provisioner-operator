@@ -38,6 +38,21 @@ spec:
               hostPathDir:
                 description: HostPathDir is the direcotry where NFS server will use.
                 type: string
+              nfsImageConfiguration:
+                description: NFSImageConfigurations hold the image configuration
+                properties:
+                  image:
+                    default: quay.io/kubernetes_incubator/nfs-provisioner:latest
+                    description: Image is the image to use
+                    type: string
+                  imagePullPolicy:
+                    default: IfNotPresent
+                    description: ImagePullPolicy is the image pull policy to use
+                    type: string
+                required:
+                - image
+                - imagePullPolicy
+                type: object
               nodeSelector:
                 additionalProperties:
                   type: string

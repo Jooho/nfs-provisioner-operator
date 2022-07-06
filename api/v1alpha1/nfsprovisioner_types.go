@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,6 +50,8 @@ type NFSProvisionerSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="StorageClass Name for NFS Provisioner",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string","urn:alm:descriptor:io.kubernetes:custom"}
 	SCForNFSProvisioner string `json:"scForNFS,omitempty"` //https://golang.org/pkg/encoding/json/
 
+	// NFSImageConfigurations hold the image configuration
+	NFSImageConfiguration NFSImageConfiguration `json:"nfsImageConfiguration,omitempty"`
 }
 
 // NFSProvisionerStatus defines the observed state of NFSProvisioner
@@ -58,6 +61,16 @@ type NFSProvisionerStatus struct {
 	Nodes []string `json:"nodes"`
 	// Error show error messages briefly
 	Error string `json:"error"`
+}
+
+// NFSImageConfiguration holds configuration of the image to use
+type NFSImageConfiguration struct {
+	// Image is the image to use
+	// +kubebuilder:default="quay.io/kubernetes_incubator/nfs-provisioner:latest"
+	Image string `json:"image"`
+	// ImagePullPolicy is the image pull policy to use
+	// +kubebuilder:default="IfNotPresent"
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
 }
 
 // +kubebuilder:object:root=true
