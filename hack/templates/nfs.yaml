@@ -3,6 +3,9 @@ kind: NFSProvisioner
 metadata:
   name: nfsprovisioner-sample
 spec:
+  nfsImageConfiguration:
+    image: quay.io/kubernetes_incubator/nfs-provisioner:latest
+    pullPolicy: IfNotPresent
   storageSize: "1G"
   scForNFSPvc: gp2
   scForNFS: nfs

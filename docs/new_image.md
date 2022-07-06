@@ -3,18 +3,18 @@
 When you try to release a new version of NFS provisioner with some reasons, you should test the new image with 4 times before pushing it. This doc explains the 4 steps.
 
 ## Scenario
-- Latest version: 0.0.2
-- New version: 0.0.3
+- Latest version: 0.0.4
+- New version: 0.0.5
 
 ## Local Test
 - Set variables
   ~~~
-  export CUSTOM_OLD_VERSION=0.0.2
+  export CUSTOM_OLD_VERSION=0.0.4
 
 
   vi env.sh
   NAMESPACE=${OP_NAME}-test
-  VERSION=0.0.3-test
+  VERSION=0.0.5-test
   ~~~
 
 - Cmds
@@ -42,15 +42,18 @@ When you try to release a new version of NFS provisioner with some reasons, you 
 
 - Set variable to avoid conflicting namespaces
   ~~~
-  vi config/default/kustomization.yaml
-  namespace: nfs-provisioner-operator-test
+  source env.sh
+  cd config/default;kustomize edit set namespace ${NAMESPACE} ; cd ../..
   ~~~
 
 - Cmds
   ~~~
   # Deploy the new operator on a cluster
   make deploy-nfs-cluster
-
+  
+  # Create a CR
+  make deploy-nfs-cr
+  
   # Verify NFS StorageClass
   make test-pvc
 
@@ -60,8 +63,8 @@ When you try to release a new version of NFS provisioner with some reasons, you 
 
 - Roll back the variable
   ~~~
-  vi config/default/kustomization.yaml
-  namespace: nfs-provisioner-operator
+  export NAMESPACE=${OP_NAME}
+  cd config/default;kustomize edit set namespace ${NAMESPACE} ; cd ../..
   ~~~
 
 ## Cluster OLM Test
@@ -82,7 +85,7 @@ It uses a index image to deploy the new operator
 ## Cluster OLM upgrade Test
 It deploys old index image to deploy old operator first and then deploy the new index image to see upgrade.
 
-- Set variable
+- Deploy the latest NFS Provisioner from operator hub
   ~~~
   UPGRADE_TEST=TRUE make deploy-nfs-cluster-olm
   ~~~
@@ -107,9 +110,9 @@ It deploys old index image to deploy old operator first and then deploy the new 
   ~~~
   vi env.sh
   NAMESPACE=${OP_NAME}
-  VERSION=0.0.3
+  VERSION=0.0.5
 
-  export CUSTOM_OLD_VERSION=0.0.2
+  export CUSTOM_OLD_VERSION=0.0.4
   ~~~
 
 - Cmds
@@ -121,14 +124,14 @@ It deploys old index image to deploy old operator first and then deploy the new 
 
 - Cmds
   ~~~
-  UPGRADE_TEST=TRUE make deploy-nfs-cluster-olm
+  UPGRADE_TEST=TRUE  make deploy-nfs-cluster-olm
   
-  ## Check NFS Provisioner 0.0.2 is runinng 
+  ## Check NFS Provisioner 0.0.4 is runinng 
   make test-rw
 
   make deploy-nfs-cluster-olm-upgrade
   
-  ## Check if NFS Provisioner 0.0.3 is running and existing PVC have no issues.
+  ## Check if NFS Provisioner 0.0.5 is running and existing PVC have no issues.
   oc debug test-pod -- ls -al /mnt/a
   make test-cleanup
 

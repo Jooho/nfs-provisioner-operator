@@ -5,6 +5,10 @@ metadata:
 spec:
   containers:
   - name: test-pod
+    command:  
+    - /bin/sh
+    - -c
+    - 'trap : TERM INT; sleep 5'
     image: busybox
     volumeMounts:
       - name: nfs-pvc

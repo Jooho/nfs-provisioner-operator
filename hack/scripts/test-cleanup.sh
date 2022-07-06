@@ -15,6 +15,9 @@ if [[ $? == 0 ]]; then oc delete -f /tmp/nfs-subs.yaml; fi
 oc get operatorgroup nfs-provisioner-operator-og -n ${NAMESPACE}
 if [[ $? == 0 ]]; then oc delete -f /tmp/nfs-og.yaml; fi
 
+oc get csv ${OP_NAME}.v${VERSION} -n ${NAMESPACE}
+if [[ $? == 0 ]]; then oc delete csv  ${OP_NAME}.v${VERSION} -n ${NAMESPACE}; fi
+
 oc get catalogsource nfs-provisioner-operator-cs -n openshift-marketplace
 if [[ $? == 0 ]]; 
 then 

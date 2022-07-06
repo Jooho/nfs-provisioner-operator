@@ -51,6 +51,7 @@ type NFSProvisionerSpec struct {
 	SCForNFSProvisioner string `json:"scForNFS,omitempty"` //https://golang.org/pkg/encoding/json/
 
 	// NFSImageConfigurations hold the image configuration
+	// +operator-sdk:csv:customresourcedefinitions:displayName="NFS Image Configuration,resources={{pod,v1,test}}"
 	NFSImageConfiguration NFSImageConfiguration `json:"nfsImageConfiguration,omitempty"`
 }
 
@@ -65,11 +66,13 @@ type NFSProvisionerStatus struct {
 
 // NFSImageConfiguration holds configuration of the image to use
 type NFSImageConfiguration struct {
-	// Image is the image to use
+	// Set nfs provisioner operator image
 	// +kubebuilder:default="quay.io/kubernetes_incubator/nfs-provisioner:latest"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="NFS Provisioner Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Image string `json:"image"`
-	// ImagePullPolicy is the image pull policy to use
+	// Image PullPolicy is for nfs provisioner operator image.
 	// +kubebuilder:default="IfNotPresent"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Pull Policy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:imagePullPolicy"}
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
 }
 

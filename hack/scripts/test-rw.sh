@@ -9,11 +9,16 @@ then
   oc create -f ${TEMPLATE_DIR}/pvc.yaml
 fi
 
-oc create -f ${TEMPLATE_DIR}/pod.yaml
+oc create -f ${TEMPLATE_DIR}/pod.yaml 
 
 sleep 10
 
-oc debug test-pod -- touch /mnt/a
-oc debug test-pod -- ls /mnt/a
+oc exec test-pod -- touch /mnt/a
+oc exec test-pod  -- ls /mnt/a
 
-echo "$?"
+if [[ $? == '0' ]] 
+then
+  echo "Success. Test files are created"
+else
+  echo "Fail. Test files are not created"
+fi

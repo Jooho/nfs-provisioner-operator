@@ -12,8 +12,8 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooholee/nfs-provisioner-operator:0.0.3
-    createdAt: "2020-01-25T12:00:00Z"
+    containerImage: quay.io/jooholee/nfs-provisioner-operator.v0.0.5-test
+    createdAt: "2022-07-06T15:13:31Z"
     description: Create and manage NFS Server and Provisioner
     operators.operatorframework.io/builder: operator-sdk-v1.12.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -67,6 +67,16 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:string
         - urn:alm:descriptor:io.kubernetes:custom
+      - description: Set nfs provisioner operator image
+        displayName: NFS Provisioner Image
+        path: nfsImageConfiguration.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image PullPolicy is for nfs provisioner operator image.
+        displayName: Pull Policy
+        path: nfsImageConfiguration.imagePullPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:imagePullPolicy
       - description: NFS server will be running on a specific node by NodeSeletor
         displayName: Node Selector
         path: nodeSelector
@@ -137,5 +147,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.3
+  replaces: nfs-provisioner-operator.v0.0.4
   version: 0.0.0

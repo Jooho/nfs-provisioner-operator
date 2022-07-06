@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/jooholee/nfs-provisioner-operator
-  newTag: 0.0.4
+  newTag: 0.0.5

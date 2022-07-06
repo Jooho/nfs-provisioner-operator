@@ -2,11 +2,10 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: nfs-provisioner-operator-subs
-  namespace: nfs-provisioner-operator-ns
+  namespace: openshift-operators
 spec:
   channel: alpha
   installPlanApproval: Automatic
   name: nfs-provisioner-operator
   source: community-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: nfs-provisioner-operator.v0.0.1

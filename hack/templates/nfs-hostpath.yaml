@@ -3,6 +3,9 @@ kind: NFSProvisioner
 metadata:
   name: nfsprovisioner-sample
 spec:
+  nfsImageConfiguration:
+    image: quay.io/kubernetes_incubator/nfs-provisioner:latest
+    pullPolicy: IfNotPresent
   nodeSelector: 
       app: nfs-provisioner
   hostPathDir: "/home/core/nfs"

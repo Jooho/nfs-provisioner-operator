@@ -55,9 +55,18 @@ then
   sed "s/0.0.1/${VERSION}/g" -i /tmp/nfs-subs.yaml
   sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-subs.yaml
 else
-  # Install Community Latest Version 
-  cp ${TEMPLATE_DIR}/nfs-subs-prod.yaml /tmp/nfs-subs.yaml
+  # Copy catalogSource yaml
+  cp ${TEMPLATE_DIR}/nfs-cs.yaml /tmp/nfs-cs.yaml
+  sed "s/0.0.1/${CUSTOM_OLD_VERSION}/g" -i /tmp/nfs-cs.yaml  
+  
+  # Copy/Update OperatorGroup yaml
+  cp ${TEMPLATE_DIR}/nfs-og.yaml /tmp/nfs-og.yaml
+  sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-og.yaml
+
+  cp ${TEMPLATE_DIR}/nfs-subs.yaml /tmp/nfs-subs.yaml
   sed "s/0.0.1/${CUSTOM_OLD_VERSION}/g" -i /tmp/nfs-subs.yaml
+  sed "s/nfs-provisioner-operator-ns/${NAMESPACE}/g" -i /tmp/nfs-subs.yaml
+
 fi
 
 # Setup OLM stuff

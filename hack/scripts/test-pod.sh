@@ -11,11 +11,17 @@ fi
 
 oc create -f ${TEMPLATE_DIR}/pod.yaml
 
-sleep 10
-
-if [[ "Succeeded" != $(oc get pod test-pod -ojsonpath='{ .status.phase}') ]]
+if [[ FILE_CHECK != '' ]] 
 then
-  echo "1"
+  sleep 8
+  oc exec test-pod  -- ls -al /mnt/
+fi
+
+sleep 15
+
+if [[ "Succeeded" == $(oc get pod test-pod -ojsonpath='{ .status.phase}') ]]
+then
+  echo "Succeed. NFS is successful attached to POD"
 else
-  echo "0"
+  echo "Fail. NFS is NOT successful attached to POD"
 fi

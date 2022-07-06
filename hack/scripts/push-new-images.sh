@@ -10,6 +10,6 @@ make bundle-build bundle-push
 make index-build index-push
 
 
-str="\n\n\n *******NEXT STEPS*******\n\n$ UPGRADE_TEST=TRUE make deploy-nfs-cluster-olm\n## Check a old NFS Provisioner is runinng ##\n$ make test-rw\nmake deploy-nfs-cluster-olm\n## Check a new NFS Provisioner is running \n$ make test-pod\noc debug test-pod -- ls -al /mnt/\n## if the /mnt/a exist, upgrade is working fine.##"
+str="\n\n\n *******NEXT STEPS*******\n\n## Check a old NFS Provisioner is runinng ##\n$ UPGRADE_TEST=TRUE make deploy-nfs-cluster-olm\n$ make test-rw\n ## Check a new NFS Provisioner is running \n $ make deploy-nfs-cluster-olm-upgrade\n## if the /mnt/a exist, upgrade is working fine.##\n$ FILE_CHECK=TRUE make test-pod\n"
 
 echo -e $str

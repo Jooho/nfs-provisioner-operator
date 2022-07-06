@@ -43,11 +43,12 @@ spec:
                 properties:
                   image:
                     default: quay.io/kubernetes_incubator/nfs-provisioner:latest
-                    description: Image is the image to use
+                    description: Set nfs provisioner operator image
                     type: string
                   imagePullPolicy:
                     default: IfNotPresent
-                    description: ImagePullPolicy is the image pull policy to use
+                    description: Image PullPolicy is for nfs provisioner operator
+                      image.
                     type: string
                 required:
                 - image

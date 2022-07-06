@@ -182,14 +182,6 @@ bundle: manifests kustomize ## Generate bundle manifests and metadata, then vali
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
 	operator-sdk bundle validate ./bundle
 
-.PHONY: bundle-build
-bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-.PHONY: bundle-push
-bundle-push: ## Push the bundle image.
-	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
-
 .PHONY: opm
 OPM = ./bin/opm
 opm: ## Download opm locally if necessary.

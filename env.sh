@@ -1,6 +1,6 @@
 export OP_NAME=nfs-provisioner-operator
 export NAMESPACE=${OP_NAME}
-export VERSION=0.0.4
+export VERSION=0.0.5
 export TAG=${VERSION}
 
 export HACK_DIR=./hack
