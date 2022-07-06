@@ -22,7 +22,6 @@ INDEX_IMG=quay.io/jooholee/${OP_NAME}-index:${TAG}
 OLD_INDEX_IMG=quay.io/jooholee/${OP_NAME}-index:${OLD_VERSION}
 BUNDLE_IMG=quay.io/jooholee/${OP_NAME}-bundle:${TAG}
 
-
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
 #
@@ -257,7 +256,8 @@ bundle-push:
 # Index
 ## Build the Index image
 index-build:
-	opm index add -c podman --mode semver  --bundles ${BUNDLE_IMG} --from-index ${OLD_INDEX_IMG} --tag ${INDEX_IMG}
+	opm index add -c podman  --bundles ${BUNDLE_IMG} --from-index ${OLD_INDEX_IMG} --tag ${INDEX_IMG}
+
 
 ## Push the Index image
 index-push:
