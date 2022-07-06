@@ -26,7 +26,7 @@ then
   # Change replace version to OLD version
   cur_date=$(date +%FT%TZ)
   sed "s/.*replaces.*/  replaces: nfs-provisioner-operator.v${CUSTOM_OLD_VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
-  sed "s/.*containerImage.*/    containerImage: quay.io\/jooholee\/nfs-provisioner-operator.v${VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
+  sed "s/.*containerImage.*/    containerImage: quay.io\/jooholee\/nfs-provisioner-operator:${VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
   sed "s/.*createdAt.*/    createdAt: ${cur_date}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
 
   # Build/Push test NFS Operator
