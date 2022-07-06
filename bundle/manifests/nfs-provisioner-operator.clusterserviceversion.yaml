@@ -20,10 +20,10 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooholee/nfs-provisioner-operator:0.0.3
+    containerImage: quay.io/jooholee/nfs-provisioner-operator:0.0.4
     createdAt: "2020-01-25T12:00:00Z"
     description: Create and manage NFS Server and Provisioner
-    operators.operatorframework.io/builder: operator-sdk-v1.19.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.22.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
