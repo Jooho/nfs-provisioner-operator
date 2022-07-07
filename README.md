@@ -1,4 +1,5 @@
-# NFS Provisioner Go Operator
+# NFS Provisioner Go Operator 
+![](https://img.shields.io/badge/openshift%204.8-tested-green)  ![](https://img.shields.io/badge/openshift%204.9-tested-green) ![](https://img.shields.io/badge/openshift%204.10-tested-green)
 
 This operator deploy NFS server with serveral storage options and also provide provisioner for storageClass.
 
