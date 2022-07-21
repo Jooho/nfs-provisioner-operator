@@ -42,7 +42,7 @@ spec:
                 description: NFSImageConfigurations hold the image configuration
                 properties:
                   image:
-                    default: quay.io/kubernetes_incubator/nfs-provisioner:latest
+                    default: k8s.gcr.io/sig-storage/nfs-provisioner:v3.0.1
                     description: Set nfs provisioner operator image
                     type: string
                   imagePullPolicy:

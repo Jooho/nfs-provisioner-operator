@@ -67,7 +67,7 @@ type NFSProvisionerStatus struct {
 // NFSImageConfiguration holds configuration of the image to use
 type NFSImageConfiguration struct {
 	// Set nfs provisioner operator image
-	// +kubebuilder:default="quay.io/kubernetes_incubator/nfs-provisioner:latest"
+	// +kubebuilder:default="k8s.gcr.io/sig-storage/nfs-provisioner:v3.0.1"
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="NFS Provisioner Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Image string `json:"image"`
 	// Image PullPolicy is for nfs provisioner operator image.
