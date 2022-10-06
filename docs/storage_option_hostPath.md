@@ -11,14 +11,18 @@
   ~~~
 
 - Create a directory on the specific node
-  ~~~
-  oc debug node/ip-10-0-168-107.ec2.internal
+  ~~~ 
+  export targetNode=$(oc get node -l node-role.kubernetes.io/worker -o name|cut -d/ -f2|head -n 1)
+  
+  oc debug node/${targetNode} 
+
   chroot /host
-  mkdir /home/core/test
+  mkdir /home/core/nfs
+  chcon -Rvt svirt_sandbox_file_t /home/core/nfs
   ~~~
 
 - Add a special label for the node (ODS does not work to update label)
   ~~~
-  oc label node/ip-10-0-168-107.ec2.internal app=nfs-provisioner
+  oc label node ${targetNode} app=nfs-provisioner
   ~~~
 

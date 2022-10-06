@@ -163,7 +163,9 @@ KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/k
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
+ifeq (,$(wildcard ./bin/kustomize))
 	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+endif
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -178,10 +180,11 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	cd config/manager && $(KUSTOMIZE) edit set image controller=quay.io/jooholee/$(OP_NAME)@$(NFS_OPERATOR_PINNED_DIGESTS)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
 	operator-sdk bundle validate ./bundle
 
+	
 .PHONY: opm
 OPM = ./bin/opm
 opm: ## Download opm locally if necessary.
@@ -227,23 +230,39 @@ catalog-push: ## Push a catalog image.
 ##@ Custom
 # Build the podman image
 podman-build: test
-	podman build . -t ${IMG}
+	sudo docker build . -t ${IMG}
+  
+  
 
 # Push the podman image
-podman-push:
-	podman push ${IMG}
+podman-push: update-digests
+	sudo docker push ${IMG}
 # Generate bundle manifests and metadata, then validate generated files.
+
+.PHONY: update-digests
+update-digests:
+	./hack/scripts/update_pinned_digests.sh
+
+.PHONY: digests
+digests: 
+	sed "s/.*containerImage.*/    containerImage: quay.io\/jooholee\/nfs-provisioner-operator@${NFS_OPERATOR_PINNED_DIGESTS}/g" -i ./config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
+	sed -i "s/.*newTag.*/  newTag: ${NFS_OPERATOR_PINNED_DIGESTS}/g" ./config/manager/kustomization.yaml
+	sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner\([^,]\+\)/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./config/samples/cache_v1alpha1_nfsprovisioner.yaml 
+	sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner\([^,]\+\)/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./config/samples/cache_v1alpha1_nfsprovisioner_pvc.yaml 
+	sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner\([^,]\+\)/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./config/samples/cache_v1alpha1_nfsprovisioner_hostPath.yaml 
+	sed -i "s/gcr.io\/kubebuilder\/kube-rbac-proxy.*/gcr.io\/kubebuilder\/kube-rbac-proxy@${RBAC_PROXY_PINNED_DIGESTS}/g" ./config/default/manager_auth_proxy_patch.yaml
+	sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner.*/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./hack/templates/nfs.yaml
+	sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner.*/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./hack/templates/nfs-hostpath.yaml
 
 ## Build the bundle image.
 .PHONY: bundle-build
-bundle-build: bundle
+bundle-build: digests bundle
 	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 ## Push the bundle image.
 .PHONY: bundle-push
 bundle-push:
 	podman push $(BUNDLE_IMG) 
-
 
 # Index
 ## Build the Index image

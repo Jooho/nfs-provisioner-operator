@@ -3,6 +3,6 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: controller
+- digest: sha256:0e2ae691098c4a251377decc89143cb4e061780fe4791d9e64acb059b0c0c5f6
+  name: controller
   newName: quay.io/jooholee/nfs-provisioner-operator
-  newTag: 0.0.5

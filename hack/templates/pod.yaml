@@ -8,8 +8,8 @@ spec:
     command:  
     - /bin/sh
     - -c
-    - 'trap : TERM INT; sleep 5'
-    image: busybox
+    - 'trap : TERM INT; sleep 15'
+    image: quay.io/jitesoft/alpine
     volumeMounts:
       - name: nfs-pvc
         mountPath: "mnt"

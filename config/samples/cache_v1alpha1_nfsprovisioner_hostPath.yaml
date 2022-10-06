@@ -3,7 +3,10 @@ kind: NFSProvisioner
 metadata:
   name: nfsprovisioner-sample
 spec:
-  nodeSelector: 
-    kubernetes.io/hostname: worker-0.bell.tamlab.brq.redhat.com
+  nfsImageConfiguration:
+    image: k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    app: nfs-provisioner
   hostPathDir: "/home/core/test"
 

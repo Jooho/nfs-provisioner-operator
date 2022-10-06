@@ -3,18 +3,18 @@
 When you try to release a new version of NFS provisioner with some reasons, you should test the new image with 4 times before pushing it. This doc explains the 4 steps.
 
 ## Scenario
-- Latest version: 0.0.4
-- New version: 0.0.5
+- Latest version: 0.0.5
+- New version: 0.0.6
 
 ## Local Test
 - Set variables
   ~~~
-  export CUSTOM_OLD_VERSION=0.0.4
+  export CUSTOM_OLD_VERSION=0.0.5
 
 
   vi env.sh
   NAMESPACE=${OP_NAME}-test
-  VERSION=0.0.5-test
+  VERSION=0.0.6-test
   ~~~
 
 - Cmds
@@ -110,9 +110,9 @@ It deploys old index image to deploy old operator first and then deploy the new 
   ~~~
   vi env.sh
   NAMESPACE=${OP_NAME}
-  VERSION=0.0.5
+  VERSION=0.0.6
 
-  export CUSTOM_OLD_VERSION=0.0.4
+  export CUSTOM_OLD_VERSION=0.0.5
   ~~~
 
 - Cmds
@@ -126,12 +126,12 @@ It deploys old index image to deploy old operator first and then deploy the new 
   ~~~
   UPGRADE_TEST=TRUE  make deploy-nfs-cluster-olm
   
-  ## Check NFS Provisioner 0.0.4 is runinng 
+  ## Check NFS Provisioner 0.0.5 is runinng 
   make test-rw
 
   make deploy-nfs-cluster-olm-upgrade
   
-  ## Check if NFS Provisioner 0.0.5 is running and existing PVC have no issues.
+  ## Check if NFS Provisioner 0.0.6 is running and existing PVC have no issues.
   oc debug test-pod -- ls -al /mnt/a
   make test-cleanup
 

@@ -19,6 +19,7 @@ oc project ${NAMESPACE}
 if [[ $? != 0 ]] 
 then
   oc new-project ${NAMESPACE}
+  oc adm policy add-scc-to-user nfs-provisioner system:serviceaccount:${NAMESPACE}:nfs-provisioner
 fi
 
 if [[ ${UPGRADE_TEST} == '' ]]
@@ -26,8 +27,13 @@ then
   # Change replace version to OLD version
   cur_date=$(date +%FT%TZ)
   sed "s/.*replaces.*/  replaces: nfs-provisioner-operator.v${CUSTOM_OLD_VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
-  sed "s/.*containerImage.*/    containerImage: quay.io\/jooholee\/nfs-provisioner-operator:${VERSION}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
   sed "s/.*createdAt.*/    createdAt: ${cur_date}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
+  
+  # # Update digests  
+  # sed "s/.*containerImage.*/    containerImage: quay.io\/jooholee\/nfs-provisioner-operator:${NFS_SERVER_PINNED_DIGESTS}/g" -i config/manifests/bases/nfs-provisioner-operator.clusterserviceversion.yaml
+  # sed "s/.*newTag.*/  newTag:${NFS_OPERATOR_PINNED_DIGESTS}/g" -i config/manager/kustomization.yaml
+  # sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner\([^,]\+\)\"/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./config/samples/cache_v1alpha1_nfsprovisioner.yaml 
+  # sed -i "s/k8s.gcr.io\/sig-storage\/nfs-provisioner*/k8s.gcr.io\/sig-storage\/nfs-provisioner@${NFS_SERVER_PINNED_DIGESTS}/g" ./hack/templates/nfs.yaml
 
   # Build/Push test NFS Operator
   make podman-build podman-push

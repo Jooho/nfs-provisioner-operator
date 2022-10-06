@@ -42,7 +42,7 @@ spec:
                 description: NFSImageConfigurations hold the image configuration
                 properties:
                   image:
-                    default: k8s.gcr.io/sig-storage/nfs-provisioner:v3.0.1
+                    default: k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439
                     description: Set nfs provisioner operator image
                     type: string
                   imagePullPolicy:
