@@ -1,5 +1,9 @@
 package defaults
 
+import (
+	corev1 "k8s.io/api/core/v1"
+)
+
 const (
 
 	// SecurityContextContrants is the permission control mechanism in Openshift and it is the same as PodSecurityPolices in Kubenetes
@@ -30,6 +34,10 @@ const (
 	Service = "nfs-provisioner"
 	//SCForNFSProvisioner is for NFS Provisioner
 	SCForNFSProvisioner = "nfs"
+	// NFSImage is for setting anoter nfs provisioner operator image
+	NFSImage = "k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439"
+	// NFSImage PullPolicy is to change pullpolicy for nfs provisioner operator image.
+	NFSImagePullPolicy = corev1.PullAlways
 )
 
 var (

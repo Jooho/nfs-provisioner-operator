@@ -24,14 +24,14 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooholee/nfs-provisioner-operator@sha256:0e2ae691098c4a251377decc89143cb4e061780fe4791d9e64acb059b0c0c5f6
-    createdAt: "2022-10-06T17:25:40Z"
+    containerImage: quay.io/jooholee/nfs-provisioner-operator@sha256:ce226ddcda4fb81e1ba4ace5a9bdd6502facbbd4a3aef2279b1ae1e8cd294ca1
+    createdAt: "2022-12-19T11:33:11Z"
     description: Create and manage NFS Server and Provisioner
     operators.operatorframework.io/builder: operator-sdk-v1.22.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
-  name: nfs-provisioner-operator.v0.0.6
+  name: nfs-provisioner-operator.v0.0.7
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -384,7 +384,7 @@ spec:
                 - --enable-leader-election
                 command:
                 - /manager
-                image: quay.io/jooholee/nfs-provisioner-operator@sha256:0e2ae691098c4a251377decc89143cb4e061780fe4791d9e64acb059b0c0c5f6
+                image: quay.io/jooholee/nfs-provisioner-operator@sha256:ce226ddcda4fb81e1ba4ace5a9bdd6502facbbd4a3aef2279b1ae1e8cd294ca1
                 name: manager
                 resources:
                   limits:
@@ -451,5 +451,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.5
-  version: 0.0.6
+  replaces: nfs-provisioner-operator.v0.0.6
+  version: 0.0.7

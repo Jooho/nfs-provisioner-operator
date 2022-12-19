@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -139,7 +140,27 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				return ctrl.Result{}, err
 			}
 		}
+	} else {
+		// Add a new namespace to SCC nfs-provisioner
+		userExistInScc := false
+		for _, user := range sccFound.Users {
+			splite_strings := strings.Split(user, ":")
+			namespace := splite_strings[2]
+			user := splite_strings[3]
+			if namespace == req.NamespacedName.Namespace && user == defaults.ServiceAccount {
+				userExistInScc = true
+			}
+		}
+		if !userExistInScc {
+			sccFound.Users = append(sccFound.Users, "system:serviceaccount:"+req.NamespacedName.Namespace+":"+defaults.ServiceAccount)
 
+			err := r.Update(ctx, sccFound)
+
+			if err != nil {
+				log.Error(err, "Failed to update a SecurityContextConstraints", "SecurityContextConstraints.Name", sccFound.Name)
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	// Check if the PVC already exists, if not create a new one
@@ -408,10 +429,23 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 	ls := labelsForNFSProvisioner(m.Name)
 
 	nodeSelector := defaults.NodeSelector
+	nfsImage := defaults.NFSImage
+	nfsImagePullPolicy := defaults.NFSImagePullPolicy
 
 	if m.Spec.NodeSelector != nil {
 		nodeSelector = m.Spec.NodeSelector
 	}
+
+	if m.Spec.NFSImageConfiguration != nil {
+		if m.Spec.NFSImageConfiguration.Image != nil {
+			nfsImage = *m.Spec.NFSImageConfiguration.Image
+		}
+
+		if m.Spec.NFSImageConfiguration.ImagePullPolicy != nil {
+			nfsImagePullPolicy = *m.Spec.NFSImageConfiguration.ImagePullPolicy
+		}
+	}
+
 	if storageType == "PVC" {
 		nodeSelector = map[string]string{}
 	}
@@ -435,8 +469,8 @@ func (r *NFSProvisionerReconciler) deploymentForNFSProvisioner(m *cachev1alpha1.
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
-						Image:           m.Spec.NFSImageConfiguration.Image,
-						ImagePullPolicy: m.Spec.NFSImageConfiguration.ImagePullPolicy,
+						Image:           nfsImage,
+						ImagePullPolicy: nfsImagePullPolicy,
 						Name:            "nfs-provisioner",
 						Ports: []corev1.ContainerPort{
 							{Name: "nfs",

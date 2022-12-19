@@ -52,7 +52,7 @@ type NFSProvisionerSpec struct {
 
 	// NFSImageConfigurations hold the image configuration
 	// +operator-sdk:csv:customresourcedefinitions:displayName="NFS Image Configuration,resources={{pod,v1,test}}"
-	NFSImageConfiguration NFSImageConfiguration `json:"nfsImageConfiguration,omitempty"`
+	NFSImageConfiguration *ImageConfiguration `json:"nfsImageConfiguration,omitempty"`
 }
 
 // NFSProvisionerStatus defines the observed state of NFSProvisioner
@@ -64,16 +64,16 @@ type NFSProvisionerStatus struct {
 	Error string `json:"error"`
 }
 
-// NFSImageConfiguration holds configuration of the image to use
-type NFSImageConfiguration struct {
+// ImageConfiguration holds configuration of the image to use
+type ImageConfiguration struct {
 	// Set nfs provisioner operator image
 	// +kubebuilder:default="k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439"
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="NFS Provisioner Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	Image string `json:"image"`
+	Image *string `json:"image"`
 	// Image PullPolicy is for nfs provisioner operator image.
 	// +kubebuilder:default="IfNotPresent"
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Pull Policy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:imagePullPolicy"}
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy"`
 }
 
 // +kubebuilder:object:root=true

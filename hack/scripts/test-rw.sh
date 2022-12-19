@@ -11,7 +11,7 @@ fi
 
 oc create -f ${TEMPLATE_DIR}/pod.yaml 
 
-sleep 10
+sleep 20
 
 oc exec test-pod -- touch /mnt/a
 oc exec test-pod  -- ls /mnt/a

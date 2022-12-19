@@ -30,3 +30,9 @@ This is [the full tutorial page](https://github.com/Jooho/jhouse_openshift/blob/
 
 - [Manual Installation](./docs/manual_deploy.md)
 
+
+## The first steps, if you have all binaries.
+~~~
+go mod tidy
+go mod vendor
+~~~
