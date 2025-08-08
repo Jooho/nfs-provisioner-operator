@@ -31,6 +31,7 @@ import (
 
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	"github.com/jooho/nfs-provisioner-operator/controllers"
+	"github.com/jooho/nfs-provisioner-operator/controllers/resources"
 	securityv1 "github.com/openshift/api/security/v1"
 	// +kubebuilder:scaffold:imports
 )
@@ -76,11 +77,9 @@ func main() {
 	setupLog.Info(fmt.Sprintf("Running in development mode: %v", isDevelopmentEnv))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "nfs-provisioner-lock",
+		Scheme:           scheme,
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "nfs-provisioner-lock",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -100,9 +99,10 @@ func main() {
 
 	// Setup all Controllers
 	if err = (&controllers.NFSProvisionerReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("NFSProvisioner"),
-		Scheme: mgrScheme,
+		Client:          mgr.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("NFSProvisioner"),
+		Scheme:          mgrScheme,
+		ResourceManager: resources.NewResourceManagerSet(mgr.GetClient(), ctrl.Log.WithName("resources"), mgrScheme),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NFSProvisioner")
 		os.Exit(1)
