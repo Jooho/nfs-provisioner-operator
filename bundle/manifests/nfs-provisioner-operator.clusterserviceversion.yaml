@@ -24,14 +24,14 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Storage
     certified: "false"
-    containerImage: quay.io/jooholee/nfs-provisioner-operator@sha256:ce226ddcda4fb81e1ba4ace5a9bdd6502facbbd4a3aef2279b1ae1e8cd294ca1
-    createdAt: "2022-12-19T11:33:11Z"
+    containerImage: quay.io/jooholee/nfs-provisioner-operator@sha256:d9c013967421ec72644a588a155975bf856a856f1ef38ba71dfea306fdb47acd
+    createdAt: "2025-08-08T20:23:50Z"
     description: Create and manage NFS Server and Provisioner
-    operators.operatorframework.io/builder: operator-sdk-v1.22.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+    operators.operatorframework.io/builder: operator-sdk-v1.41.1
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
-  name: nfs-provisioner-operator.v0.0.7
+  name: nfs-provisioner-operator.v0.0.8
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -92,9 +92,9 @@ spec:
       - description: NFS server will be running on a specific node by NodeSeletor
         displayName: Node Selector
         path: nodeSelector
-      - description: PVC Name is the PVC resource that already created for NFS server.
-          Do not set StorageClass name with this param. Then, operator will fail to
-          deploy NFS Server.
+      - description: |-
+          PVC Name is the PVC resource that already created for NFS server.
+          Do not set StorageClass name with this param. Then, operator will fail to deploy NFS Server.
         displayName: PVC Name
         path: pvc
         x-descriptors:
@@ -107,16 +107,17 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:string
         - urn:alm:descriptor:io.kubernetes:custom
-      - description: StorageClass Name for NFS server will provide a PVC for NFS server.
-          Do not set PVC name with this param. Then, operator will fail to deploy
-          NFS Server
+      - description: |-
+          StorageClass Name for NFS server will provide a PVC for NFS server.
+          Do not set PVC name with this param. Then, operator will fail to deploy NFS Server
         displayName: StorageClass Name for NFS server
         path: scForNFSPvc
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:string
         - urn:alm:descriptor:io.kubernetes:custom
-      - description: StorageSize is the PVC size for NFS server. By default, it sets
-          10G.
+      - description: |-
+          StorageSize is the PVC size for NFS server.
+          By default, it sets 10G.
         displayName: Storage Size
         path: storageSize
         x-descriptors:
@@ -384,7 +385,7 @@ spec:
                 - --enable-leader-election
                 command:
                 - /manager
-                image: quay.io/jooholee/nfs-provisioner-operator@sha256:ce226ddcda4fb81e1ba4ace5a9bdd6502facbbd4a3aef2279b1ae1e8cd294ca1
+                image: quay.io/jooholee/nfs-provisioner-operator@sha256:d9c013967421ec72644a588a155975bf856a856f1ef38ba71dfea306fdb47acd
                 name: manager
                 resources:
                   limits:
@@ -451,5 +452,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.6
-  version: 0.0.7
+  replaces: nfs-provisioner-operator.v0.0.7
+  version: 0.0.8

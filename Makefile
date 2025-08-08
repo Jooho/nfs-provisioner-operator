@@ -156,7 +156,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
+KUSTOMIZE_VERSION ?= v5.0.1
 CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
@@ -230,13 +230,13 @@ catalog-push: ## Push a catalog image.
 ##@ Custom
 # Build the podman image
 podman-build: test
-	sudo docker build . -t ${IMG}
+	docker build . -t ${IMG}
   
   
 
 # Push the podman image
 podman-push: update-digests
-	sudo docker push ${IMG}
+	docker push ${IMG}
 # Generate bundle manifests and metadata, then validate generated files.
 
 .PHONY: update-digests

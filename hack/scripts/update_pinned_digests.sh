@@ -39,8 +39,8 @@ else
 fi
 
 
-NEW_NFS_OPERATOR_PINNED_DIGESTS=$(sudo docker images --digests| grep quay.io/jooholee/nfs-provisioner-operator | grep ${TAG} |grep -E -v 'index|bundle'| awk '{print $3}'|head -n 1) 
-NFS_OPERATOR_PINNED_TAG=$(sudo docker images --digests|grep ${NEW_NFS_OPERATOR_PINNED_DIGESTS}| awk '{print $2}' )
+NEW_NFS_OPERATOR_PINNED_DIGESTS=$(docker images --digests| grep quay.io/jooholee/nfs-provisioner-operator | grep ${TAG} |grep -E -v 'index|bundle'| awk '{print $3}'|head -n 1) 
+NFS_OPERATOR_PINNED_TAG=$(docker images --digests|grep ${NEW_NFS_OPERATOR_PINNED_DIGESTS}| awk '{print $2}' )
 
 contains $TAG "${NFS_OPERATOR_PINNED_TAG[@]}"
 tag_exist=$?

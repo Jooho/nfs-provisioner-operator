@@ -1,5 +1,5 @@
 domain: jhouse.com
-layout: go.kubebuilder.io/v2
+layout: go.kubebuilder.io/v4
 projectName: nfs-provisioner-operator
 repo: github.com/jooho/nfs-provisioner-operator
 resources:
