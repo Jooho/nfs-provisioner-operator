@@ -35,7 +35,7 @@ const (
 	//SCForNFSProvisioner is for NFS Provisioner
 	SCForNFSProvisioner = "nfs"
 	// NFSImage is for setting anoter nfs provisioner operator image
-	NFSImage = "k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439"
+	NFSImage = "k8s.gcr.io/sig-storage/nfs-provisioner@sha256:b9fa1045e6c76225c335dd88e7e5014e47155df713055b6d35a1959e7ceeb3b5"
 	// NFSImage PullPolicy is to change pullpolicy for nfs provisioner operator image.
 	NFSImagePullPolicy = corev1.PullAlways
 )
