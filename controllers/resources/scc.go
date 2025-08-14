@@ -6,6 +6,7 @@ import (
 
 	securityv1 "github.com/openshift/api/security/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,9 +33,22 @@ func (m *SCCManager) GetResourceName() string {
 	return "SecurityContextConstraints"
 }
 
+// isSCCCRDAvailable checks if SecurityContextConstraints CRD exists in the cluster
+func (m *SCCManager) isSCCCRDAvailable(ctx context.Context) bool {
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+	err := m.Client.Get(ctx, types.NamespacedName{Name: "securitycontextconstraints.security.openshift.io"}, crd)
+	return err == nil
+}
+
 // EnsureResource ensures the SCC exists and is properly configured
 func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
 	log := m.Log.WithValues("resource", m.GetResourceName())
+
+	// Check if SecurityContextConstraints CRD is available in the cluster
+	if !m.isSCCCRDAvailable(ctx) {
+		log.Info("SecurityContextConstraints CRD is not available in cluster, skipping SCC creation")
+		return nil
+	}
 
 	sccFound := &securityv1.SecurityContextConstraints{}
 	err := m.Client.Get(ctx, types.NamespacedName{Name: defaults.SecurityContextContrants, Namespace: ""}, sccFound)

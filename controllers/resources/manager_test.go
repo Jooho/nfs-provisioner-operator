@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -47,9 +48,37 @@ var _ = Describe("Resource Manager Set", func() {
 		Expect(storagev1.AddToScheme(scheme)).To(Succeed())
 		Expect(cachev1alpha1.AddToScheme(scheme)).To(Succeed())
 		Expect(securityv1.AddToScheme(scheme)).To(Succeed())
+		Expect(apiextensionsv1.AddToScheme(scheme)).To(Succeed())
 
-		// Create fake client
-		client = fake.NewClientBuilder().WithScheme(scheme).Build()
+		// Create SecurityContextConstraints CRD for testing
+		sccCRD := &apiextensionsv1.CustomResourceDefinition{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "securitycontextconstraints.security.openshift.io",
+			},
+			Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+				Group: "security.openshift.io",
+				Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+					{
+						Name:    "v1",
+						Served:  true,
+						Storage: true,
+						Schema: &apiextensionsv1.CustomResourceValidation{
+							OpenAPIV3Schema: &apiextensionsv1.JSONSchemaProps{
+								Type: "object",
+							},
+						},
+					},
+				},
+				Scope: apiextensionsv1.ClusterScoped,
+				Names: apiextensionsv1.CustomResourceDefinitionNames{
+					Plural: "securitycontextconstraints",
+					Kind:   "SecurityContextConstraints",
+				},
+			},
+		}
+
+		// Create fake client with the CRD
+		client = fake.NewClientBuilder().WithScheme(scheme).WithObjects(sccCRD).Build()
 
 		// Create test NFSProvisioner instance
 		nfsProvisioner = &cachev1alpha1.NFSProvisioner{
