@@ -1,0 +1,59 @@
+package resources
+
+import (
+	"context"
+
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
+	"github.com/jooho/nfs-provisioner-operator/pkg/builder"
+	"github.com/jooho/nfs-provisioner-operator/pkg/defaults"
+)
+
+// DeploymentManager manages Deployment resources
+type DeploymentManager struct {
+	BaseResourceManager
+}
+
+// NewDeploymentManager creates a new DeploymentManager
+func NewDeploymentManager(base BaseResourceManager) *DeploymentManager {
+	return &DeploymentManager{
+		BaseResourceManager: base,
+	}
+}
+
+// GetResourceName returns the name of the resource this manager handles
+func (m *DeploymentManager) GetResourceName() string {
+	return "Deployment"
+}
+
+// EnsureResource ensures the Deployment exists
+func (m *DeploymentManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
+	log := m.Log.WithValues("resource", m.GetResourceName())
+
+	// Check if the deployment already exists
+	deployFound := &appsv1.Deployment{}
+	err := m.Client.Get(ctx, types.NamespacedName{Name: defaults.Deployment, Namespace: nfsProvisioner.Namespace}, deployFound)
+	if err != nil && errors.IsNotFound(err) {
+		// Build deployment using builder
+		dep := builder.BuildDeployment(nfsProvisioner)
+
+		// Set NFSProvisioner instance as the owner and controller
+		if err := ctrl.SetControllerReference(nfsProvisioner, dep, m.Scheme); err != nil {
+			return err
+		}
+
+		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = m.Client.Create(ctx, dep); err != nil {
+			log.Error(err, "Failed to create a Deployment for NFSProvisioner", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
