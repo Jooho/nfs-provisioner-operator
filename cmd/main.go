@@ -34,7 +34,9 @@ import (
 
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	"github.com/jooho/nfs-provisioner-operator/controllers"
-	"github.com/jooho/nfs-provisioner-operator/controllers/resources"
+	pkgreconciler "github.com/jooho/nfs-provisioner-operator/pkg/reconciler"
+	"github.com/jooho/nfs-provisioner-operator/pkg/resources"
+	"github.com/jooho/nfs-provisioner-operator/pkg/validation"
 	securityv1 "github.com/openshift/api/security/v1"
 	// +kubebuilder:scaffold:imports
 )
@@ -49,7 +51,7 @@ func init() {
 
 	utilruntime.Must(cachev1alpha1.AddToScheme(scheme))
 
-	//Add 3rd API Scheme
+	// Add 3rd API Scheme
 	utilruntime.Must(securityv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -98,18 +100,44 @@ func main() {
 	// Setup Scheme for all api resources
 	mgrScheme := mgr.GetScheme()
 
-	// // Adding the securityv1
-	// if err := securityv1.AddToScheme(mgrScheme); err != nil {
-	// 	setupLog.Error(err, "unable to add security v1 sheme", "security v1 schemem", "NFSProvisioner")
-	// 	os.Exit(1)
-	// }
+	// Initialize dependencies for reconciler
+	client := mgr.GetClient()
+	logger := ctrl.Log.WithName("controllers").WithName("NFSProvisioner")
 
-	// Setup all Controllers
+	// Create validator
+	validator := validation.NewValidator()
+
+	// Create resource managers
+	baseManager := resources.BaseResourceManager{
+		Client: client,
+		Scheme: mgrScheme,
+		Log:    ctrl.Log.WithName("resources"),
+	}
+
+	resourceManagers := []resources.ResourceManager{
+		resources.NewServiceAccountManager(baseManager),
+		resources.NewRBACManager(baseManager),
+		resources.NewSCCManager(baseManager),
+		resources.NewPVCManager(baseManager),
+		resources.NewDeploymentManager(baseManager),
+		resources.NewServiceManager(baseManager),
+		resources.NewStorageClassManager(baseManager),
+	}
+
+	// Create reconciler with dependency injection
+	reconciler := pkgreconciler.NewReconciler(
+		client,
+		validator,
+		resourceManagers,
+		logger,
+	)
+
+	// Setup controller
 	if err = (&controllers.NFSProvisionerReconciler{
-		Client:          mgr.GetClient(),
-		Log:             ctrl.Log.WithName("controllers").WithName("NFSProvisioner"),
-		Scheme:          mgrScheme,
-		ResourceManager: resources.NewResourceManagerSet(mgr.GetClient(), ctrl.Log.WithName("resources"), mgrScheme),
+		Client:     client,
+		Log:        logger,
+		Scheme:     mgrScheme,
+		Reconciler: reconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NFSProvisioner")
 		os.Exit(1)

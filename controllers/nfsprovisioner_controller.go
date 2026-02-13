@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,35 +31,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
-	"github.com/jooho/nfs-provisioner-operator/controllers/defaults"
-	"github.com/jooho/nfs-provisioner-operator/controllers/resources"
+	"github.com/jooho/nfs-provisioner-operator/pkg/defaults"
+	"github.com/jooho/nfs-provisioner-operator/pkg/reconciler"
 )
 
 // NFSProvisionerReconciler reconciles a NFSProvisioner object
 type NFSProvisionerReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	ResourceManager *resources.ResourceManagerSet
-	Log             logr.Logger
-}
-
-func validate(m *cachev1alpha1.NFSProvisioner) error {
-	pvc := m.Spec.Pvc
-	sc := m.Spec.SCForNFSPvc
-	hostPathDir := m.Spec.HostPathDir
-	if pvc != "" && (sc != "" || hostPathDir != "") {
-		return fmt.Errorf("scForPvc or hostPathDir can not set with Pvc")
-	}
-
-	if hostPathDir != "" && (sc != "" || pvc != "") {
-		return fmt.Errorf("scForPvc or Pvc can not set with hostPathDir")
-	}
-
-	if sc != "" && (pvc != "" || hostPathDir != "") {
-		return fmt.Errorf("pvc or hostPathDir can not set with scForPvc")
-	}
-
-	return nil
+	Scheme     *runtime.Scheme
+	Reconciler reconciler.Reconciler
+	Log        logr.Logger
 }
 
 // +kubebuilder:rbac:groups=cache.jhouse.com,resources=nfsprovisioners,verbs=get;list;watch;create;update;patch;delete
@@ -102,46 +82,14 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Validate checking
-	if err = validate(nfsprovisioner); err != nil {
-		log.Error(err, fmt.Sprintf("pvc: %s | sc: %s | hostPathDir: %s", nfsprovisioner.Spec.Pvc, nfsprovisioner.Spec.SCForNFSPvc, nfsprovisioner.Spec.HostPathDir))
-
-		nfsprovisioner.Status.Error = fmt.Sprintf("pvc: %s | sc: %s | hostPathDir: %s", nfsprovisioner.Spec.Pvc, nfsprovisioner.Spec.SCForNFSPvc, nfsprovisioner.Spec.HostPathDir)
-		nfsprovisioner.Status.Nodes = []string{}
-		err := r.Status().Update(ctx, nfsprovisioner)
-		if err != nil {
-			log.Error(err, "Failed to update nfsprovisioner status")
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{}, err
-	}
-
-	// Ensure required resources using resource managers
-	if err := r.ResourceManager.EnsureAllResources(ctx, nfsprovisioner); err != nil {
-		log.Error(err, "Failed to ensure required resources")
-		return ctrl.Result{}, err
-	}
-
-	// Delete Logic
-	// name of our custom finalizer
+	// Handle deletion with finalizer
 	const finalizerName = "nfsprovisioner.finalizers.jhouse.io"
-
-	// examine DeletionTimestamp to determine if object is under deletion
-	// isNFSProvisionerdMarkedToBeDeleted := nfsprovisioner.GetDeletionTimestamp() != nil
-
-	// if nfsprovisioner.ObjectMeta.DeletionTimestamp.IsZero() {
 	if nfsprovisioner.ObjectMeta.DeletionTimestamp.IsZero() {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// registering our finalizer.
-
+		// The object is not being deleted
 		if !containsString(nfsprovisioner.GetFinalizers(), finalizerName) {
 			log.Info("Adding Finalizer for the NFSProvisioner")
-
 			controllerutil.AddFinalizer(nfsprovisioner, finalizerName)
-
-			if err := r.Update(context.Background(), nfsprovisioner); err != nil {
+			if err := r.Update(ctx, nfsprovisioner); err != nil {
 				log.Error(err, "Failed to update CR NFSProvisioner to add finalizer")
 				return ctrl.Result{}, err
 			}
@@ -149,21 +97,17 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	} else {
 		// The object is being deleted
 		if containsString(nfsprovisioner.ObjectMeta.Finalizers, finalizerName) {
-			// our finalizer is present, so lets handle any external dependency
-			if err := r.deleteExternalResources(nfsprovisioner); err != nil {
-				// if fail to delete the external dependency here, return with error
-				// so that it can be retried
-
-				log.Error(err, "Failed to delete external resoureces")
+			// Handle external resource deletion
+			if err := r.deleteExternalResources(ctx, nfsprovisioner); err != nil {
+				log.Error(err, "Failed to delete external resources")
 				return ctrl.Result{}, err
 			}
 
-			// remove our finalizer from the list and update it.
+			// Remove finalizer
 			log.Info("Removing Finalizer for the NFSProvisioner")
 			controllerutil.RemoveFinalizer(nfsprovisioner, finalizerName)
-
-			if err := r.Update(context.Background(), nfsprovisioner); err != nil {
-				log.Error(err, "Failed to update CR NFSProvisioner with finalizer to remove finalizer")
+			if err := r.Update(ctx, nfsprovisioner); err != nil {
+				log.Error(err, "Failed to update CR NFSProvisioner to remove finalizer")
 				return ctrl.Result{}, err
 			}
 		}
@@ -172,14 +116,14 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{Requeue: true}, nil
+	// Delegate to pkg/reconciler for main reconciliation logic
+	return r.Reconciler.Reconcile(ctx, nfsprovisioner)
 }
 
 // Delete any external resources associated with the nfs server
-func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSProvisioner) error {
+func (r *NFSProvisionerReconciler) deleteExternalResources(ctx context.Context, m *cachev1alpha1.NFSProvisioner) error {
 	log := r.Log.WithName("deleteExternalResource")
 	// To-Do Delete all pvc that pawned by NFS SC
-	ctx := context.Background()
 
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
