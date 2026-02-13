@@ -39,9 +39,9 @@ import (
 // NFSProvisionerReconciler reconciles a NFSProvisioner object
 type NFSProvisionerReconciler struct {
 	client.Client
-	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	ResourceManager *resources.ResourceManagerSet
+	Log             logr.Logger
 }
 
 func validate(m *cachev1alpha1.NFSProvisioner) error {
@@ -57,7 +57,7 @@ func validate(m *cachev1alpha1.NFSProvisioner) error {
 	}
 
 	if sc != "" && (pvc != "" || hostPathDir != "") {
-		return fmt.Errorf("Pvc or hostPathDir can not set with scForPvc")
+		return fmt.Errorf("pvc or hostPathDir can not set with scForPvc")
 	}
 
 	return nil
@@ -90,7 +90,6 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Fetch the NFSProvisioner instance
 	nfsprovisioner := &cachev1alpha1.NFSProvisioner{}
 	err := r.Get(ctx, req.NamespacedName, nfsprovisioner)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -185,7 +184,8 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSP
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: defaults.ClusterRole,
-		}}
+		},
+	}
 	err := r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRole, Namespace: ""}, clusterRole)
 	if err == nil {
 		log.Info("Deleting ClusterRole for NFSProvisioner")
@@ -199,13 +199,13 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(m *cachev1alpha1.NFSP
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: defaults.ClusterRoleBinding,
-		}}
+		},
+	}
 
 	err = r.Get(ctx, types.NamespacedName{Name: defaults.ClusterRoleBinding, Namespace: ""}, clusterRoleBinding)
 	if err == nil {
 		log.Info("Deleting ClusterRoleBinding for NFSProvisioner")
 		err = r.Delete(ctx, clusterRoleBinding, &client.DeleteOptions{})
-
 		if err != nil {
 			log.Error(err, "Failed to delete ClusterRoleBinding for NFSProvisioner", "ClusterRoleBinding.Name", defaults.ClusterRoleBinding)
 			return err
@@ -225,20 +225,9 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
-}
-
 // SetupWithManager return error
 func (r *NFSProvisionerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.NFSProvisioner{}).
 		Complete(r)
-
 }

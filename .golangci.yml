@@ -1,0 +1,131 @@
+# golangci-lint configuration for NFS Provisioner Operator
+# Version: 1.64.8
+# Based on research.md recommendations for Kubernetes operators
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+  go: "1.24"
+
+linters:
+  enable:
+    # Code quality and style
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+
+    # Best practices
+    - gocritic
+    - revive
+    - stylecheck
+
+    # Complexity
+    - gocyclo
+    - gocognit
+
+    # Error handling
+    - errorlint
+    - wrapcheck
+
+    # Security
+    - gosec
+
+    # Performance
+    - prealloc
+
+    # Formatting
+    - whitespace
+    - gofumpt
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+
+  gocognit:
+    min-complexity: 20
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - hugeParam  # controller-runtime uses large structs
+      - rangeValCopy  # acceptable in some cases
+      - commentedOutCode  # Will be addressed during refactoring
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+
+  govet:
+    enable-all: true
+    settings:
+      shadow:
+        strict: true
+
+  staticcheck:
+    checks: ["all"]
+
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - "checkPrivateReceivers"
+          - "sayRepetitiveInsteadOfStutters"
+
+  gosec:
+    excludes:
+      - G304  # File path from variable - acceptable in operator context
+
+  wrapcheck:
+    # Will be addressed systematically in P2 (Error Handling) user story
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - .Wrap(
+      - .Wrapf(
+    ignorePackageGlobs:
+      - "*/controller-runtime/*"
+      - "sigs.k8s.io/controller-runtime/*"
+
+issues:
+  exclude-rules:
+    # Exclude linting for generated files
+    - path: zz_generated\..*\.go
+      linters:
+        - goimports
+        - gofmt
+
+    # Exclude vendor and generated API code
+    - path: vendor/
+      linters:
+        - all
+    - path: api/v1alpha1/
+      linters:
+        - all
+
+    # Exclude some linters from test files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - gocognit
+        - funlen
+        - dupl
+
+    # Exclude staticcheck for test suite files
+    - path: suite_test\.go
+      linters:
+        - staticcheck
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
