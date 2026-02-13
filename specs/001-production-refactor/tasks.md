@@ -80,9 +80,9 @@ description: "Task list for Production Quality Codebase Refactoring"
 - [x] T023 [P] [US1] Add BuildService function in pkg/builder/builder.go
 - [x] T024 [P] [US1] Add BuildServiceAccount function in pkg/builder/builder.go
 - [ ] T025 [P] [US1] Add BuildPVC function in pkg/builder/builder.go
-- [ ] T026 [P] [US1] Add BuildStorageClass function in pkg/builder/builder.go
-- [ ] T027 [P] [US1] Add BuildRBAC functions (ClusterRole, ClusterRoleBinding, Role, RoleBinding) in pkg/builder/builder.go
-- [ ] T028 [P] [US1] Add BuildSCC function (OpenShift only) in pkg/builder/builder.go
+- [x] T026 [P] [US1] Add BuildStorageClass function in pkg/builder/builder.go
+- [x] T027 [P] [US1] Add BuildRBAC functions (ClusterRole, ClusterRoleBinding, Role, RoleBinding) in pkg/builder/builder.go
+- [x] T028 [P] [US1] Add BuildSCC function (OpenShift only) in pkg/builder/builder.go
 
 #### Step 4: Refactor pkg/resources Module
 

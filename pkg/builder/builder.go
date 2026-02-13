@@ -1,6 +1,7 @@
 package builder
 
 import (
+	securityv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -224,6 +225,95 @@ func BuildClusterRoleBinding(nfs *cachev1alpha1.NFSProvisioner) *rbacv1.ClusterR
 	}
 
 	return crb
+}
+
+// BuildRole constructs a Role for the NFS provisioner.
+func BuildRole(nfs *cachev1alpha1.NFSProvisioner) *rbacv1.Role {
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      defaults.Role,
+			Namespace: nfs.Namespace,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"endpoints"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "delete"},
+			},
+			{
+				APIGroups: []string{""},
+				Resources: []string{"services"},
+				Verbs:     []string{"get"},
+			},
+		},
+	}
+
+	return role
+}
+
+// BuildRoleBinding constructs a RoleBinding for the NFS provisioner.
+func BuildRoleBinding(nfs *cachev1alpha1.NFSProvisioner) *rbacv1.RoleBinding {
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      defaults.RoleBinding,
+			Namespace: nfs.Namespace,
+		},
+		Subjects: []rbacv1.Subject{{
+			Kind:      "ServiceAccount",
+			Name:      defaults.ServiceAccount,
+			Namespace: nfs.Namespace,
+		}},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role",
+			Name:     defaults.Role,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	return roleBinding
+}
+
+// BuildSCC constructs a SecurityContextConstraints for the NFS provisioner (OpenShift only).
+func BuildSCC(nfs *cachev1alpha1.NFSProvisioner) *securityv1.SecurityContextConstraints {
+	scc := &securityv1.SecurityContextConstraints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: defaults.SecurityContextConstraints,
+		},
+		AllowHostDirVolumePlugin: true,
+		AllowHostIPC:             false,
+		AllowHostNetwork:         false,
+		AllowHostPID:             false,
+		AllowHostPorts:           false,
+		AllowPrivilegedContainer: false,
+		AllowedCapabilities:      []corev1.Capability{"DAC_READ_SEARCH", "SYS_RESOURCE"},
+		DefaultAddCapabilities:   nil,
+		Priority:                 nil,
+		ReadOnlyRootFilesystem:   false,
+		RequiredDropCapabilities: []corev1.Capability{"KILL", "MKNOD", "SYS_CHROOT"},
+		RunAsUser: securityv1.RunAsUserStrategyOptions{
+			Type: securityv1.RunAsUserStrategyRunAsAny,
+		},
+		SELinuxContext: securityv1.SELinuxContextStrategyOptions{
+			Type: securityv1.SELinuxStrategyMustRunAs,
+		},
+		Users: []string{"system:serviceaccount:" + nfs.Namespace + ":" + defaults.ServiceAccount},
+		SupplementalGroups: securityv1.SupplementalGroupsStrategyOptions{
+			Type: securityv1.SupplementalGroupsStrategyRunAsAny,
+		},
+		Volumes: []securityv1.FSType{
+			securityv1.FSTypeConfigMap,
+			securityv1.FSTypeDownwardAPI,
+			securityv1.FSTypeEmptyDir,
+			securityv1.FSTypePersistentVolumeClaim,
+			securityv1.FSTypeHostPath,
+			securityv1.FSTypeSecret,
+		},
+		FSGroup: securityv1.FSGroupStrategyOptions{
+			Type: securityv1.FSGroupStrategyMustRunAs,
+		},
+	}
+
+	return scc
 }
 
 // Helper functions
