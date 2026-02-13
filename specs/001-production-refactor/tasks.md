@@ -64,7 +64,7 @@ description: "Task list for Production Quality Codebase Refactoring"
 - [x] T013 [P] [US1] Create pkg/validation/validator.go with Validator interface
 - [x] T014 [US1] Implement validation logic for storage option mutual exclusivity in pkg/validation/validator.go
 - [x] T015 [US1] Improve error messages to be actionable (e.g., "exactly one of spec.hostPathDir, spec.pvc, or spec.scForNFSPvc must be set")
-- [ ] T016 [US1] Add field format validation (storageSize, scForNFS, image) in pkg/validation/validator.go
+- [x] T016 [US1] Add field format validation (storageSize, scForNFS, image) in pkg/validation/validator.go
 
 #### Step 2: Create pkg/defaults Module
 
@@ -79,37 +79,37 @@ description: "Task list for Production Quality Codebase Refactoring"
 - [x] T022 [US1] Add BuildDeployment function in pkg/builder/builder.go
 - [x] T023 [P] [US1] Add BuildService function in pkg/builder/builder.go
 - [x] T024 [P] [US1] Add BuildServiceAccount function in pkg/builder/builder.go
-- [ ] T025 [P] [US1] Add BuildPVC function in pkg/builder/builder.go
+- [x] T025 [P] [US1] Add BuildPVC function in pkg/builder/builder.go
 - [x] T026 [P] [US1] Add BuildStorageClass function in pkg/builder/builder.go
 - [x] T027 [P] [US1] Add BuildRBAC functions (ClusterRole, ClusterRoleBinding, Role, RoleBinding) in pkg/builder/builder.go
 - [x] T028 [P] [US1] Add BuildSCC function (OpenShift only) in pkg/builder/builder.go
 
 #### Step 4: Refactor pkg/resources Module
 
-- [ ] T029 [US1] Move controllers/resources/ to pkg/resources/ directory
-- [ ] T030 [US1] Update pkg/resources/manager.go to implement ResourceManager interface from contracts/
-- [ ] T031 [US1] Refactor pkg/resources/deployment.go to use pkg/builder functions
-- [ ] T032 [P] [US1] Refactor pkg/resources/service.go to use pkg/builder functions
-- [ ] T033 [P] [US1] Refactor pkg/resources/pvc.go to use pkg/builder functions
-- [ ] T034 [P] [US1] Refactor pkg/resources/rbac.go to use pkg/builder functions
-- [ ] T035 [P] [US1] Refactor pkg/resources/scc.go to use pkg/builder functions
-- [ ] T036 [P] [US1] Refactor pkg/resources/storageclass.go to use pkg/builder functions
-- [ ] T037 [P] [US1] Refactor pkg/resources/serviceaccount.go to use pkg/builder functions
+- [x] T029 [US1] Move controllers/resources/ to pkg/resources/ directory
+- [x] T030 [US1] Update pkg/resources/manager.go to implement ResourceManager interface from contracts/
+- [x] T031 [US1] Refactor pkg/resources/deployment.go to use pkg/builder functions
+- [x] T032 [P] [US1] Refactor pkg/resources/service.go to use pkg/builder functions
+- [x] T033 [P] [US1] Refactor pkg/resources/pvc.go to use pkg/builder functions
+- [x] T034 [P] [US1] Refactor pkg/resources/rbac.go to use pkg/builder functions
+- [x] T035 [P] [US1] Refactor pkg/resources/scc.go to use pkg/builder functions
+- [x] T036 [P] [US1] Refactor pkg/resources/storageclass.go to use pkg/builder functions
+- [x] T037 [P] [US1] Refactor pkg/resources/serviceaccount.go to use pkg/builder functions
 
 #### Step 5: Create pkg/reconciler Module
 
-- [ ] T038 [US1] Create pkg/reconciler/reconciler.go with Reconciler interface
-- [ ] T039 [US1] Implement NewReconciler constructor with dependency injection (Validator, ResourceManager, K8s client, logger)
-- [ ] T040 [US1] Implement Reconcile method orchestrating: validation → defaults → resource creation → status update
-- [ ] T041 [US1] Add proper error classification (validation vs. transient vs. permanent errors) in pkg/reconciler/reconciler.go
-- [ ] T042 [US1] Implement requeue logic (no requeue for validation errors, exponential backoff for transient errors)
+- [x] T038 [US1] Create pkg/reconciler/reconciler.go with Reconciler interface
+- [x] T039 [US1] Implement NewReconciler constructor with dependency injection (Validator, ResourceManager, K8s client, logger)
+- [x] T040 [US1] Implement Reconcile method orchestrating: validation → defaults → resource creation → status update
+- [x] T041 [US1] Add proper error classification (validation vs. transient vs. permanent errors) in pkg/reconciler/reconciler.go
+- [x] T042 [US1] Implement requeue logic (no requeue for validation errors, exponential backoff for transient errors)
 
 #### Step 6: Update Controller to Delegate
 
-- [ ] T043 [US1] Simplify controllers/nfsprovisioner_controller.go to thin wrapper
-- [ ] T044 [US1] Update controller Reconcile method to fetch CR and delegate to pkg/reconciler
-- [ ] T045 [US1] Remove inline validation logic from controller (now in pkg/validation)
-- [ ] T046 [US1] Update controller initialization to construct pkg/reconciler.Reconciler
+- [x] T043 [US1] Simplify controllers/nfsprovisioner_controller.go to thin wrapper
+- [x] T044 [US1] Update controller Reconcile method to fetch CR and delegate to pkg/reconciler
+- [x] T045 [US1] Remove inline validation logic from controller (now in pkg/validation)
+- [x] T046 [US1] Update controller initialization to construct pkg/reconciler.Reconciler
 
 #### Step 7: Move Defaults Module
 
