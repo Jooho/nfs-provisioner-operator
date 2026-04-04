@@ -28,3 +28,4 @@ setup-envtest.sh
 *~
 .bkit/
 cover*.out
+vendor/

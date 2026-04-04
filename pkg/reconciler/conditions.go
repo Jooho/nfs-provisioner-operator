@@ -96,31 +96,6 @@ func SetReadyConditionFalse(nfs *cachev1alpha1.NFSProvisioner, generation int64,
 	})
 }
 
-// SetProgressingCondition sets the Progressing condition to True during reconciliation.
-//
-// This condition indicates that the controller is actively reconciling the NFSProvisioner.
-// It should be set at the start of each reconciliation loop.
-//
-// Parameters:
-//   - nfs: The NFSProvisioner resource to update
-//   - generation: The observed generation of the CR
-//
-// The condition is set with:
-//   - Type: Progressing
-//   - Status: True
-//   - Reason: Reconciling
-//   - Message: "Reconciling NFSProvisioner resources"
-func SetProgressingCondition(nfs *cachev1alpha1.NFSProvisioner, generation int64) {
-	apimeta.SetStatusCondition(&nfs.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeProgressing,
-		Status:             metav1.ConditionTrue,
-		ObservedGeneration: generation,
-		LastTransitionTime: metav1.Now(),
-		Reason:             ReasonReconciling,
-		Message:            "Reconciling NFSProvisioner resources",
-	})
-}
-
 // SetProgressingConditionFalse sets the Progressing condition to False when reconciliation is complete.
 //
 // Parameters:

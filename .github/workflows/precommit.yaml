@@ -1,0 +1,43 @@
+name: Precommit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64
+          args: --config=.golangci.yml
+
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Unit tests
+        run: go test ./pkg/... -timeout 2m -count=1 -coverprofile=cover.out
+
+      - name: Check coverage
+        run: |
+          go tool cover -func=cover.out | grep total | awk '{if ($3+0 < 75.0) {print "FAIL: Coverage " $3 " below 75%"; exit 1} else {print "PASS: Coverage " $3}}'
