@@ -71,7 +71,7 @@ kubectl apply -f config/crd/bases/
 # Run operator locally or deploy to cluster
 make run  # Local development
 # OR
-make deploy IMG=quay.io/myrepo/nfs-provisioner:latest  # Cluster deployment
+make deploy IMG=quay.io/jooholee/nfs-provisioner-operator:0.0.9  # Cluster deployment
 ```
 
 ### Creating an NFS Provisioner Instance

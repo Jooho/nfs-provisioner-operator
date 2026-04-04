@@ -14,10 +14,10 @@
   - Runs: manifests, generate, fmt, vet
 
 - **docker-build** — Build Docker image with manager (runs tests first)
-  - Usage: `make docker-build IMG=quay.io/myrepo/nfs-provisioner:v1.0.0`
+  - Usage: `make docker-build IMG=quay.io/jooholee/nfs-provisioner-operator:v1.0.0`
 
 - **docker-push** — Push Docker image to registry
-  - Usage: `make docker-push IMG=quay.io/myrepo/nfs-provisioner:v1.0.0`
+  - Usage: `make docker-push IMG=quay.io/jooholee/nfs-provisioner-operator:v1.0.0`
 
 ## Test Targets
 
@@ -83,7 +83,7 @@
 
 - **deploy** — Deploy operator to cluster
   - Prerequisite: CRDs already installed
-  - Usage: `make deploy IMG=quay.io/myrepo/nfs-provisioner:latest`
+  - Usage: `make deploy IMG=quay.io/jooholee/nfs-provisioner-operator:latest`
   - Uses: kustomize from config/manager/
 
 - **undeploy** — Undeploy operator from cluster
@@ -128,10 +128,10 @@ make run          # Run operator locally
 
 ### Cluster Deployment
 ```bash
-make docker-build IMG=quay.io/myrepo/nfs-provisioner:latest
-make docker-push IMG=quay.io/myrepo/nfs-provisioner:latest
+make docker-build IMG=quay.io/jooholee/nfs-provisioner-operator:latest
+make docker-push IMG=quay.io/jooholee/nfs-provisioner-operator:latest
 make install      # Install CRDs
-make deploy IMG=quay.io/myrepo/nfs-provisioner:latest
+make deploy IMG=quay.io/jooholee/nfs-provisioner-operator:latest
 ```
 
 ### OLM Installation
@@ -160,6 +160,6 @@ go test -race ./...
 
 # E2E tests on cluster
 make install
-make deploy IMG=quay.io/myrepo/nfs-provisioner:latest
+make deploy IMG=quay.io/jooholee/nfs-provisioner-operator:latest
 make test-e2e
 ```
