@@ -6,7 +6,6 @@ on:
   pull_request:
 
 env:
-  NFS_IMAGE: registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8
   OPERATOR_IMG: quay.io/jooholee/nfs-provisioner-operator
   OPERATOR_NAMESPACE: nfs-provisioner-operator
 
@@ -59,13 +58,10 @@ jobs:
           name: operator-image
           path: /tmp
 
-      - name: Load images into Kind
+      - name: Load operator image into Kind
         run: |
           docker load -i /tmp/operator-image.tar
           kind load docker-image ${{ env.OPERATOR_IMG }}:ci
-
-          docker pull ${{ env.NFS_IMAGE }}
-          kind load docker-image ${{ env.NFS_IMAGE }}
 
       - name: Deploy operator to cluster
         run: |

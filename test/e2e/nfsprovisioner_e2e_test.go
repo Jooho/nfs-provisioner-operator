@@ -47,14 +47,12 @@ func writerImage() string {
 	return "busybox:1.36"
 }
 
-// platformConfig returns platform-specific values for the E2E test.
-func platformConfig() (hostPathDir, image string) {
+// hostPathForPlatform returns the platform-specific hostPath directory.
+func hostPathForPlatform() string {
 	if isOCP() {
-		// OpenShift: use public registry and standard OCP hostPath
-		return "/home/core/nfs", defaults.NFSImage
+		return "/home/core/nfs"
 	}
-	// Kind: use local registry image
-	return "/tmp/nfs-e2e", "localhost:5001/nfs-provisioner:v4.0.8"
+	return "/tmp/nfs-e2e"
 }
 
 var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
@@ -113,10 +111,9 @@ var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
 
 	Context("deploy operator and create CR", func() {
 		It("should create NFSProvisioner CR and reconcile all resources", func(ctx SpecContext) {
-			hostPathDir, image := platformConfig()
-			pullPolicy := corev1.PullAlways
+			hostPathDir := hostPathForPlatform()
 
-			By(fmt.Sprintf("creating NFSProvisioner CR (platform=%s, image=%s)", os.Getenv("E2E_PLATFORM"), image))
+			By(fmt.Sprintf("creating NFSProvisioner CR (platform=%s, hostPath=%s)", os.Getenv("E2E_PLATFORM"), hostPathDir))
 			nfs := &cachev1alpha1.NFSProvisioner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "e2e-nfs",
@@ -126,10 +123,6 @@ var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
 					HostPathDir:  hostPathDir,
 					StorageSize:  "1Gi",
 					NodeSelector: map[string]string{"app": "nfs-provisioner"},
-					NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
-						Image:           &image,
-						ImagePullPolicy: &pullPolicy,
-					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, nfs)).To(Succeed())
@@ -346,8 +339,6 @@ var _ = Describe("NFS Provisioner E2E - scForNFSPvc mode", Ordered, func() {
 
 	Context("create CR with scForNFSPvc (no node prep needed)", func() {
 		It("should create NFS server PVC and all resources using default StorageClass", func(ctx SpecContext) {
-			_, image := platformConfig()
-			pullPolicy := corev1.PullAlways
 			defaultSC := getDefaultStorageClass()
 
 			By(fmt.Sprintf("creating NFSProvisioner CR with scForNFSPvc=%s", defaultSC))
@@ -359,10 +350,6 @@ var _ = Describe("NFS Provisioner E2E - scForNFSPvc mode", Ordered, func() {
 				Spec: cachev1alpha1.NFSProvisionerSpec{
 					SCForNFSPvc: defaultSC,
 					StorageSize: "1Gi",
-					NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
-						Image:           &image,
-						ImagePullPolicy: &pullPolicy,
-					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, nfs)).To(Succeed())
