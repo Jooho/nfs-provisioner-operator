@@ -134,12 +134,59 @@ gh pr create \
   --body "Upgrade from {PREV_VERSION}. See CSV for details."
 ```
 
-#### 6b. redhat-openshift-ecosystem/community-operators-prod
+#### 6b. redhat-openshift-ecosystem/community-operators-prod (FBC format)
 
-Same as 6a but:
-- Repo: `~/temp/20260213_SPECKIT/community-operators-prod`
-- PR target: `redhat-openshift-ecosystem/community-operators-prod`
-- Body can include OpenShift-specific details (SCC, FBC, OCP version)
+This repo uses **File-Based Catalog (FBC)** format, NOT the old registry+v1 bundle format.
+
+```bash
+REPO=~/temp/20260213_SPECKIT/community-operators-prod
+OP_DIR=$REPO/operators/nfs-provisioner-operator
+
+cd $REPO
+git checkout main && git pull
+git checkout -b nfs-provisioner-operator-{NEW_VERSION}
+
+# 1. Copy bundle directory (same as 6a)
+DEST=$OP_DIR/{NEW_VERSION}
+mkdir -p $DEST/manifests $DEST/metadata $DEST/tests
+cp bundle/manifests/* $DEST/manifests/
+cp bundle/metadata/annotations.yaml $DEST/metadata/
+cp bundle/tests/scorecard/config.yaml $DEST/tests/ 2>/dev/null
+
+# 2. Update FBC basic-template.yaml - add new bundle entry and update channel
+#    Edit $OP_DIR/catalog-templates/basic-template.yaml:
+#    - Add new bundle image: quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
+#    - Update channel entries: add v{NEW_VERSION} replaces v{PREV_VERSION}
+
+# 3. Render catalog.yaml from local FBC data
+#    Combine package.yaml + channel.yaml + all version yamls into catalog.yaml
+#    Copy to ALL supported OCP version directories:
+CATALOG_VERSIONS="v4.19 v4.20 v4.21 v4.22"
+for ver in $CATALOG_VERSIONS; do
+  mkdir -p $REPO/catalogs/${ver}/nfs-provisioner-operator
+  cp rendered-catalog.yaml $REPO/catalogs/${ver}/nfs-provisioner-operator/catalog.yaml
+done
+
+# 4. If new OCP versions exist in catalogs/, add them to ci.yaml catalog_names
+
+# 5. Commit and push
+git add operators/nfs-provisioner-operator/ catalogs/
+git commit -S -s -m "operators nfs-provisioner-operator ({NEW_VERSION})"
+git push origin nfs-provisioner-operator-{NEW_VERSION}
+
+# 6. Create PR
+gh pr create \
+  --repo redhat-openshift-ecosystem/community-operators-prod \
+  --head Jooho:nfs-provisioner-operator-{NEW_VERSION} \
+  --base main \
+  --title "operators nfs-provisioner-operator ({NEW_VERSION})" \
+  --body "Upgrade from {PREV_VERSION}. FBC migration included."
+```
+
+**Key differences from 6a:**
+- Includes FBC files: `catalog-templates/`, `catalogs/v4.19~v4.22/`
+- `ci.yaml` has `fbc.enabled: true` with catalog_mapping
+- `Makefile` for FBC build/validation is already present
 
 ### Phase 7: Summary
 
