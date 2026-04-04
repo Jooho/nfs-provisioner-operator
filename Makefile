@@ -183,7 +183,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
+CONTROLLER_TOOLS_VERSION ?= v0.20.1
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -334,3 +334,18 @@ test-rw:
 
 test-cleanup:
 	./hack/scripts/test-cleanup.sh
+
+##@ Release
+.PHONY: bump-version
+bump-version: ## Bump version references across the project
+	@if [ -z "$(NEW_VERSION)" ] || [ -z "$(PRIOR_VERSION)" ]; then \
+		echo "Usage: make bump-version NEW_VERSION=0.0.10 PRIOR_VERSION=0.0.9 [DRY_RUN=true]"; \
+		exit 1; \
+	fi
+	@ARGS="$(NEW_VERSION) $(PRIOR_VERSION)"; \
+	if [ "$(DRY_RUN)" = "true" ]; then ARGS="$$ARGS --dry-run"; fi; \
+	./hack/release/bump-version.sh $$ARGS
+
+.PHONY: validate-release
+validate-release: ## Check all release prerequisites
+	./hack/release/validate-release.sh

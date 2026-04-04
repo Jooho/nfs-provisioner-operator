@@ -1,15 +1,15 @@
 ---
 name: operator-release
 description: |
-  Build operator images, create FBC catalog, and submit PRs to community-operators repos.
-  Full release pipeline: build → bundle → FBC catalog → push → PR to k8s-operatorhub + community-operators-prod.
-argument-hint: "<version> [--skip-pr]"
+  Agentic release pipeline: verify → bump-version → build/push images → FBC catalog → commit → community-operators PRs.
+  Full pipeline with dry-run support and 3 human approval gates.
+argument-hint: "<version> [--skip-pr] [--dry-run]"
 user-invocable: true
 ---
 
 # Operator Release Skill
 
-Release the NFS Provisioner Operator: build images, create File-Based Catalog, and submit PRs to upstream operator catalogs.
+Release the NFS Provisioner Operator with an agentic pipeline: automated steps with human approval at critical gates.
 
 ## Arguments
 
@@ -21,38 +21,57 @@ Release the NFS Provisioner Operator: build images, create File-Based Catalog, a
 
 ## Prerequisites
 
-Before running this skill, verify:
-1. All tests pass: `make test`, `make test-e2e`
-2. Code is committed on the feature branch
-3. `podman` logged into `quay.io` (`podman login quay.io`)
-4. `gh` CLI authenticated (`gh auth status`)
-5. Community operator repos cloned as forks:
-   - `~/temp/20260213_SPECKIT/k8s-community-operators` (fork of k8s-operatorhub/community-operators)
-   - `~/temp/20260213_SPECKIT/community-operators-prod` (fork of redhat-openshift-ecosystem/community-operators-prod)
+Before running this skill, verify with:
+```bash
+make validate-release
+```
+
+Required:
+1. `podman` logged into `quay.io`
+2. `gh` CLI authenticated
+3. `opm`, `kustomize` available
+4. Community operator repos cloned as forks:
+   - `~/temp/20260213_SPECKIT/k8s-community-operators`
+   - `~/temp/20260213_SPECKIT/community-operators-prod`
 
 ## Release Pipeline
 
-### Phase 1: Prepare Version
+### Phase 0: Prerequisites & Version Setup
 
-1. Read current version from `env` file (`VERSION` variable)
-2. Read the `<version>` argument as the NEW_VERSION
-3. Determine PREV_VERSION from the current VERSION
-4. Confirm with user: "Release v{NEW_VERSION} (replaces v{PREV_VERSION})?"
+1. Run `make validate-release` — abort if any check fails
+2. Read current version from `env` file (`VERSION` variable) as PREV_VERSION
+3. Read the `<version>` argument as NEW_VERSION
+4. If `--dry-run`: Run `make bump-version NEW_VERSION={NEW_VERSION} PRIOR_VERSION={PREV_VERSION} DRY_RUN=true` and stop
+5. Confirm with user: "Release v{NEW_VERSION} (replaces v{PREV_VERSION})?"
 
-### Phase 2: Update Version References
+### Phase 1: Verify
 
-1. Update `env` file: `VERSION={NEW_VERSION}`, `TAG={NEW_VERSION}`
-2. Update CSV in `bundle/manifests/nfs-provisioner-operator.clusterserviceversion.yaml`:
-   - `metadata.name`: `nfs-provisioner-operator.v{NEW_VERSION}`
-   - `spec.version`: `{NEW_VERSION}`
-   - `spec.replaces`: `nfs-provisioner-operator.v{PREV_VERSION}`
-   - `containerImage` annotation: `quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION}`
-   - Deployment image: `quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION}`
-3. Sync CRD to bundle: `cp config/crd/bases/*.yaml bundle/manifests/`
+Run `/operator-verify --scope unit` to ensure tests pass before making any changes.
+If verification fails → STOP and report.
+
+### Phase 2: Version Bump
+
+```bash
+make bump-version NEW_VERSION={NEW_VERSION} PRIOR_VERSION={PREV_VERSION}
+```
+
+This script:
+- Updates `env` and `env.sh` (VERSION field)
+- Updates `config/manifests/bases/` CSV `replaces` field
+- Runs `make bundle` to regenerate bundle manifests
+- Syncs CRDs to `bundle/manifests/`
+- Shows `git diff` of all changes
+
+### ── GATE 1: Version Review ──
+
+Show the diff output from bump-version to the user.
+
+**Ask**: "Version bump complete. Review the diff above. Approve to proceed with image build, or reject to revert all changes."
+
+- **Approve** → Continue to Phase 3
+- **Reject** → Run `git checkout -- env env.sh config/ bundle/` and STOP
 
 ### Phase 3: Build & Push Images
-
-Run these commands sequentially:
 
 ```bash
 # 1. Operator image
@@ -64,16 +83,43 @@ podman build -f bundle.Dockerfile -t quay.io/jooholee/nfs-provisioner-operator-b
 podman push quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
 ```
 
-### Phase 4: Build File-Based Catalog (FBC)
+### ── GATE 2: Push Confirmation ──
 
-1. Render the new bundle into FBC format:
+Before pushing, show:
+```
+Images to push:
+  - quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION}
+  - quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
+```
+
+**Ask**: "Push these images to quay.io?"
+
+- **Approve** → Push images, continue
+- **Reject** → Images built locally but not pushed. STOP.
+
+### Phase 4: Post-Push Updates (Digests + FBC)
+
+After images are pushed:
+
+1. **Capture operator image digest**:
+   ```bash
+   DIGEST=$(skopeo inspect docker://quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION} | jq -r '.Digest')
+   ```
+
+2. **Update digest references**:
+   - `env` and `env.sh`: Update `NFS_OPERATOR_PINNED_DIGESTS=sha256:...`
+   - `config/manifests/bases/` CSV: Update `containerImage` annotation to digest form
+   - `config/manager/kustomization.yaml`: Update `digest:` field
+   - Re-run `make bundle` to propagate digest to bundle CSV
+
+3. **Generate FBC catalog**:
    ```bash
    opm render quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION} \
      -o yaml > catalog/nfs-provisioner-operator/v{NEW_VERSION}.yaml
    ```
 
-2. Update `catalog/nfs-provisioner-operator/channel.yaml`:
-   - Add new entry with `replaces` pointing to PREV_VERSION
+4. **Update channel**:
+   Edit `catalog/nfs-provisioner-operator/channel.yaml` — add new entry:
    ```yaml
    entries:
      - name: nfs-provisioner-operator.v{PREV_VERSION}
@@ -81,9 +127,9 @@ podman push quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
        replaces: nfs-provisioner-operator.v{PREV_VERSION}
    ```
 
-3. Validate: `opm validate catalog/`
+5. **Validate**: `opm validate catalog/`
 
-4. Build and push catalog image:
+6. **Build and push catalog image**:
    ```bash
    podman build --no-cache -f catalog.Dockerfile \
      -t quay.io/jooholee/nfs-provisioner-operator-catalog:{NEW_VERSION} .
@@ -93,7 +139,7 @@ podman push quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
 ### Phase 5: Commit Release
 
 ```bash
-git add env bundle/ catalog/
+git add env env.sh bundle/ catalog/ config/
 git commit -S -s -m "release: v{NEW_VERSION}"
 ```
 
@@ -101,7 +147,19 @@ git commit -S -s -m "release: v{NEW_VERSION}"
 
 ### Phase 6: Submit PRs (skip if --skip-pr)
 
-For each community-operators repo:
+### ── GATE 3: PR Approval ──
+
+Show:
+```
+PRs to create:
+  1. k8s-operatorhub/community-operators — operators nfs-provisioner-operator ({NEW_VERSION})
+  2. redhat-openshift-ecosystem/community-operators-prod — operators nfs-provisioner-operator ({NEW_VERSION}) [FBC]
+```
+
+**Ask**: "Create these PRs?"
+
+- **Approve** → Create PRs
+- **Reject** → Release committed locally but no PRs created. STOP.
 
 #### 6a. k8s-operatorhub/community-operators
 
@@ -109,23 +167,20 @@ For each community-operators repo:
 REPO=~/temp/20260213_SPECKIT/k8s-community-operators
 DEST=$REPO/operators/nfs-provisioner-operator/{NEW_VERSION}
 
-# Create version directory
 mkdir -p $DEST/manifests $DEST/metadata $DEST/tests
-
-# Copy bundle
 cp bundle/manifests/* $DEST/manifests/
 cp bundle/metadata/annotations.yaml $DEST/metadata/
 cp bundle/tests/scorecard/config.yaml $DEST/tests/ 2>/dev/null
 
-# Branch, commit, push
 cd $REPO
 git checkout main && git pull
+# Delete existing branch if present (from previous failed attempt)
+git branch -D nfs-provisioner-operator-{NEW_VERSION} 2>/dev/null || true
 git checkout -b nfs-provisioner-operator-{NEW_VERSION}
 git add operators/nfs-provisioner-operator/{NEW_VERSION}/
 git commit -S -s -m "operators nfs-provisioner-operator ({NEW_VERSION})"
-git push origin nfs-provisioner-operator-{NEW_VERSION}
+git push origin nfs-provisioner-operator-{NEW_VERSION} --force-with-lease
 
-# Create PR
 gh pr create \
   --repo k8s-operatorhub/community-operators \
   --head Jooho:nfs-provisioner-operator-{NEW_VERSION} \
@@ -136,45 +191,40 @@ gh pr create \
 
 #### 6b. redhat-openshift-ecosystem/community-operators-prod (FBC format)
 
-This repo uses **File-Based Catalog (FBC)** format, NOT the old registry+v1 bundle format.
-
 ```bash
 REPO=~/temp/20260213_SPECKIT/community-operators-prod
 OP_DIR=$REPO/operators/nfs-provisioner-operator
 
 cd $REPO
 git checkout main && git pull
+git branch -D nfs-provisioner-operator-{NEW_VERSION} 2>/dev/null || true
 git checkout -b nfs-provisioner-operator-{NEW_VERSION}
 
-# 1. Copy bundle directory (same as 6a)
+# 1. Copy bundle directory
 DEST=$OP_DIR/{NEW_VERSION}
 mkdir -p $DEST/manifests $DEST/metadata $DEST/tests
 cp bundle/manifests/* $DEST/manifests/
 cp bundle/metadata/annotations.yaml $DEST/metadata/
 cp bundle/tests/scorecard/config.yaml $DEST/tests/ 2>/dev/null
 
-# 2. Update FBC basic-template.yaml - add new bundle entry and update channel
-#    Edit $OP_DIR/catalog-templates/basic-template.yaml:
-#    - Add new bundle image: quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
-#    - Update channel entries: add v{NEW_VERSION} replaces v{PREV_VERSION}
+# 2. Update FBC basic-template.yaml
+#    Add new bundle image entry and update channel entries
 
-# 3. Render catalog.yaml from local FBC data
-#    Combine package.yaml + channel.yaml + all version yamls into catalog.yaml
-#    Copy to ALL supported OCP version directories:
+# 3. Render catalog.yaml from FBC data
+#    Copy to all supported OCP version directories:
 CATALOG_VERSIONS="v4.19 v4.20 v4.21 v4.22"
 for ver in $CATALOG_VERSIONS; do
   mkdir -p $REPO/catalogs/${ver}/nfs-provisioner-operator
   cp rendered-catalog.yaml $REPO/catalogs/${ver}/nfs-provisioner-operator/catalog.yaml
 done
 
-# 4. If new OCP versions exist in catalogs/, add them to ci.yaml catalog_names
+# 4. Update ci.yaml if new OCP versions exist
 
 # 5. Commit and push
 git add operators/nfs-provisioner-operator/ catalogs/
 git commit -S -s -m "operators nfs-provisioner-operator ({NEW_VERSION})"
-git push origin nfs-provisioner-operator-{NEW_VERSION}
+git push origin nfs-provisioner-operator-{NEW_VERSION} --force-with-lease
 
-# 6. Create PR
 gh pr create \
   --repo redhat-openshift-ecosystem/community-operators-prod \
   --head Jooho:nfs-provisioner-operator-{NEW_VERSION} \
@@ -183,49 +233,43 @@ gh pr create \
   --body "Upgrade from {PREV_VERSION}. FBC migration included."
 ```
 
-**Key differences from 6a:**
-- Includes FBC files: `catalog-templates/`, `catalogs/v4.19~v4.22/`
-- `ci.yaml` has `fbc.enabled: true` with catalog_mapping
-- `Makefile` for FBC build/validation is already present
-
-### Phase 7: Summary
+### Phase 7: Summary Report
 
 Display:
 ```
 Operator Release v{NEW_VERSION} Complete
 ──────────────────────────────────────
 Images:
-  ✅ quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION}
-  ✅ quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
-  ✅ quay.io/jooholee/nfs-provisioner-operator-catalog:{NEW_VERSION}
+  ✓ quay.io/jooholee/nfs-provisioner-operator:{NEW_VERSION}
+  ✓ quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION}
+  ✓ quay.io/jooholee/nfs-provisioner-operator-catalog:{NEW_VERSION}
 
 PRs:
-  ✅ k8s-operatorhub/community-operators#XXXX
-  ✅ community-operators-prod#XXXX
+  ✓ k8s-operatorhub/community-operators#XXXX
+  ✓ community-operators-prod#XXXX
 
 Next: Monitor PR CI checks
 ```
 
-## Verification Checklist
+## Approval Gates Summary
 
-Before submitting PRs, the skill verifies:
-- [ ] `opm validate catalog/` passes
-- [ ] Bundle image renders correctly (`opm render`)
-- [ ] CSV has correct `version`, `replaces`, and `name` fields
-- [ ] All images pushed successfully to quay.io
-- [ ] Git commits use `-S -s` flags
+| Gate | Before | Shows | On Reject |
+|------|--------|-------|-----------|
+| G1: Version Review | Image build | git diff of version changes | Revert all file changes |
+| G2: Push Confirmation | Image push | Image names and tags | Keep images local only |
+| G3: PR Approval | PR creation | Target repos and PR titles | Keep commit local, no PRs |
 
-## Rollback
+## Abort & Rollback
 
-If something goes wrong:
+At any gate rejection, the process stops cleanly:
+- G1 reject: `git checkout -- env env.sh config/ bundle/` (no changes persist)
+- G2 reject: Images built locally but not pushed (no external side effects)
+- G3 reject: Release committed locally, push manually later if desired
+
+Full rollback after completion:
 ```bash
-# Revert version changes
 git revert HEAD
-
-# Delete remote branches
 git push origin --delete nfs-provisioner-operator-{NEW_VERSION}
-
-# Close PRs via gh CLI
 gh pr close <PR_NUMBER> --repo <repo>
 ```
 
@@ -235,9 +279,9 @@ gh pr close <PR_NUMBER> --repo <repo>
 # Full release with PRs
 /operator-release 0.0.10
 
-# Build and push only (no PRs)
-/operator-release 0.0.10 --skip-pr
-
 # Preview what would happen
 /operator-release 0.0.10 --dry-run
+
+# Build and push only (no PRs)
+/operator-release 0.0.10 --skip-pr
 ```
