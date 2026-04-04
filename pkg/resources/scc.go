@@ -40,11 +40,15 @@ func (m *SCCManager) isSCCCRDAvailable(ctx context.Context) bool {
 
 // EnsureResource ensures the SCC exists and is properly configured
 func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
-	log := m.Log.WithValues("resource", m.GetResourceName())
+	log := m.Log.WithValues(
+		"resource", m.GetResourceName(),
+		"nfsprovisioner.name", nfsProvisioner.Name,
+		"nfsprovisioner.namespace", nfsProvisioner.Namespace,
+	)
 
 	// Check if SecurityContextConstraints CRD is available in the cluster
 	if !m.isSCCCRDAvailable(ctx) {
-		log.Info("SecurityContextConstraints CRD is not available in cluster, skipping SCC creation")
+		log.V(1).Info("SecurityContextConstraints CRD not available, skipping SCC creation (vanilla Kubernetes)")
 		return nil
 	}
 
@@ -53,14 +57,16 @@ func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 	if err != nil && errors.IsNotFound(err) {
 		// Build SCC using builder
 		scc := builder.BuildSCC(nfsProvisioner)
-		log.Info("Creating a new SecurityContextConstraints", "SecurityContextConstraints.Name", scc.Name)
+		log.Info("Creating SecurityContextConstraints", "scc.name", scc.Name)
 
 		if err := m.Client.Create(ctx, scc); err != nil {
-			log.Error(err, "Failed to create a new SecurityContextConstraints", "SecurityContextConstraints.Name", scc.Name)
+			log.Error(err, "Failed to create SecurityContextConstraints", "scc.name", scc.Name)
 			return err
 		}
+		log.Info("Successfully created SecurityContextConstraints", "scc.name", scc.Name)
 		return nil
 	} else if err != nil {
+		log.Error(err, "Failed to get SecurityContextConstraints")
 		return err
 	}
 
@@ -77,12 +83,15 @@ func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 
 	if !userExists {
 		sccFound.Users = append(sccFound.Users, userToAdd)
-		log.Info("Adding user to existing SecurityContextConstraints", "user", userToAdd)
+		log.Info("Adding user to SecurityContextConstraints", "scc.name", sccFound.Name, "user", userToAdd)
 
 		if err := m.Client.Update(ctx, sccFound); err != nil {
-			log.Error(err, "Failed to update SecurityContextConstraints", "SecurityContextConstraints.Name", sccFound.Name)
+			log.Error(err, "Failed to update SecurityContextConstraints", "scc.name", sccFound.Name)
 			return err
 		}
+		log.Info("Successfully updated SecurityContextConstraints", "scc.name", sccFound.Name)
+	} else {
+		log.V(1).Info("User already exists in SecurityContextConstraints", "scc.name", sccFound.Name, "user", userToAdd)
 	}
 
 	return nil

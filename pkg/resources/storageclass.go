@@ -31,7 +31,11 @@ func (m *StorageClassManager) GetResourceName() string {
 
 // EnsureResource ensures the StorageClass exists
 func (m *StorageClassManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
-	log := m.Log.WithValues("resource", m.GetResourceName())
+	log := m.Log.WithValues(
+		"resource", m.GetResourceName(),
+		"nfsprovisioner.name", nfsProvisioner.Name,
+		"nfsprovisioner.namespace", nfsProvisioner.Namespace,
+	)
 
 	// Determine StorageClass name
 	scName := defaults.SCForNFSProvisioner
@@ -46,13 +50,17 @@ func (m *StorageClassManager) EnsureResource(ctx context.Context, nfsProvisioner
 		// Build StorageClass using builder
 		sc := builder.BuildStorageClass(nfsProvisioner)
 
-		log.Info("Creating a new StorageClass", "StorageClass.Name", sc.Name)
+		log.Info("Creating StorageClass", "storageclass.name", sc.Name)
 		if err = m.Client.Create(ctx, sc); err != nil {
-			log.Error(err, "Failed to create a StorageClass for NFSProvisioner", "StorageClass.Name", sc.Name)
+			log.Error(err, "Failed to create StorageClass", "storageclass.name", sc.Name)
 			return err
 		}
+		log.Info("Successfully created StorageClass", "storageclass.name", sc.Name)
 	} else if err != nil {
+		log.Error(err, "Failed to get StorageClass")
 		return err
+	} else {
+		log.V(1).Info("StorageClass already exists", "storageclass.name", scFound.Name)
 	}
 
 	return nil

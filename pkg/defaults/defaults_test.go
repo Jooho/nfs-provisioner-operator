@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestDefaults(t *testing.T) {
@@ -123,7 +123,7 @@ var _ = Describe("ApplyDefaults", func() {
 				},
 				Spec: cachev1alpha1.NFSProvisionerSpec{
 					NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
-						Image: pointer.String("custom-image:v1"),
+						Image: ptr.To("custom-image:v1"),
 					},
 				},
 			}

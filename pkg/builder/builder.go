@@ -160,14 +160,16 @@ func BuildPVC(nfs *cachev1alpha1.NFSProvisioner) *corev1.PersistentVolumeClaim {
 
 // BuildStorageClass constructs a StorageClass for end users.
 func BuildStorageClass(nfs *cachev1alpha1.NFSProvisioner) *storagev1.StorageClass {
+	scName := nfs.Spec.SCForNFSProvisioner
+	if scName == "" {
+		scName = defaults.SCForNFSProvisioner
+	}
+
 	sc := &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: nfs.Spec.SCForNFSProvisioner,
+			Name: scName,
 		},
 		Provisioner: "example.com/nfs",
-		Parameters: map[string]string{
-			"archiveOnDelete": "false",
-		},
 	}
 
 	return sc

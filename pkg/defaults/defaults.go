@@ -3,7 +3,7 @@ package defaults
 import (
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 // Default values for NFSProvisioner resources
@@ -48,7 +48,7 @@ const (
 	SCForNFSProvisioner = "nfs"
 
 	// NFSImage is the default NFS provisioner image
-	NFSImage = "k8s.gcr.io/sig-storage/nfs-provisioner@sha256:e943bb77c7df05ebdc8c7888b2db289b13bf9f012d6a3a5a74f14d4d5743d439"
+	NFSImage = "registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8"
 
 	// NFSImagePullPolicy is the default pull policy for NFS provisioner image
 	NFSImagePullPolicy = corev1.PullAlways
@@ -83,7 +83,7 @@ func ApplyDefaults(nfs *cachev1alpha1.NFSProvisioner) {
 
 	// Apply default NFS image if not set
 	if nfs.Spec.NFSImageConfiguration.Image == nil || *nfs.Spec.NFSImageConfiguration.Image == "" {
-		nfs.Spec.NFSImageConfiguration.Image = pointer.String(NFSImage)
+		nfs.Spec.NFSImageConfiguration.Image = ptr.To(NFSImage)
 	}
 
 	// Apply default image pull policy if not set

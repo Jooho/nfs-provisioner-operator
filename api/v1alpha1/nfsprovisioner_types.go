@@ -34,8 +34,11 @@ type NFSProvisionerSpec struct {
 
 // NFSProvisionerStatus defines the observed state of NFSProvisioner
 type NFSProvisionerStatus struct {
-	Error string   `json:"error"`
-	Nodes []string `json:"nodes"`
+	Phase              string             `json:"phase,omitempty"`
+	Error              string             `json:"error,omitempty"`
+	Conditions         []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	Nodes              []string           `json:"nodes,omitempty"`
+	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
 }
 
 // ImageConfiguration holds configuration of the image to use
@@ -56,10 +59,10 @@ type ImageConfiguration struct {
 // NFSProvisioner is the Schema for the nfsprovisioners API
 // +operator-sdk:csv:customresourcedefinitions:displayName="NFS Provisioner App",resources={{ServiceAccount,v1,nfs-provisioner},{SecurityContextConstraints,v1,nfs-provisioner},{Deployment,v1,nfs-provisioner},{PersistentVolumeClaim,v1,nfs-server},{ClusterRole,v1,nfs-provisioner-runner},{ClusterRoleBinding,v1,nfs-provisioner-runner},{Role,v1,leader-locking-nfs-provisioner},{RoleBinding,v1,leader-locking-nfs-provisioner},{Service,v1,nfs-provisioner},{StorageClass,v1,nfs}}
 type NFSProvisioner struct {
-	Spec              NFSProvisionerSpec   `json:"spec,omitempty"`
-	Status            NFSProvisionerStatus `json:"status,omitempty"`
+	Spec              NFSProvisionerSpec `json:"spec,omitempty"`
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Status            NFSProvisionerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

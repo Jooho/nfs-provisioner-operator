@@ -32,7 +32,11 @@ func (m *ServiceManager) GetResourceName() string {
 
 // EnsureResource ensures the Service exists
 func (m *ServiceManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
-	log := m.Log.WithValues("resource", m.GetResourceName())
+	log := m.Log.WithValues(
+		"resource", m.GetResourceName(),
+		"nfsprovisioner.name", nfsProvisioner.Name,
+		"nfsprovisioner.namespace", nfsProvisioner.Namespace,
+	)
 
 	// Check if the service already exists
 	svcFound := &corev1.Service{}
@@ -43,16 +47,21 @@ func (m *ServiceManager) EnsureResource(ctx context.Context, nfsProvisioner *cac
 
 		// Set NFSProvisioner instance as the owner and controller
 		if err := ctrl.SetControllerReference(nfsProvisioner, svc, m.Scheme); err != nil {
+			log.Error(err, "Failed to set controller reference on Service")
 			return err
 		}
 
-		log.Info("Creating a new Service", "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
+		log.Info("Creating Service", "service.namespace", svc.Namespace, "service.name", svc.Name)
 		if err = m.Client.Create(ctx, svc); err != nil {
-			log.Error(err, "Failed to create a Service for NFSProvisioner", "Service.Namespace", svc.Namespace, "Service.Name", svc.Name)
+			log.Error(err, "Failed to create Service", "service.namespace", svc.Namespace, "service.name", svc.Name)
 			return err
 		}
+		log.Info("Successfully created Service", "service.namespace", svc.Namespace, "service.name", svc.Name)
 	} else if err != nil {
+		log.Error(err, "Failed to get Service")
 		return err
+	} else {
+		log.V(1).Info("Service already exists", "service.namespace", svcFound.Namespace, "service.name", svcFound.Name)
 	}
 
 	return nil

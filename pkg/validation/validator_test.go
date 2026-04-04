@@ -8,7 +8,7 @@ import (
 	"github.com/jooho/nfs-provisioner-operator/pkg/validation"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestValidation(t *testing.T) {
@@ -17,9 +17,7 @@ func TestValidation(t *testing.T) {
 }
 
 var _ = Describe("Validator", func() {
-	var (
-		validator validation.Validator
-	)
+	var validator validation.Validator
 
 	BeforeEach(func() {
 		validator = validation.NewValidator()
@@ -198,7 +196,7 @@ var _ = Describe("Validator", func() {
 						Spec: cachev1alpha1.NFSProvisionerSpec{
 							HostPathDir: "/mnt/nfs",
 							NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
-								Image: pointer.String(image),
+								Image: ptr.To(image),
 							},
 						},
 					}
@@ -212,7 +210,7 @@ var _ = Describe("Validator", func() {
 					Spec: cachev1alpha1.NFSProvisionerSpec{
 						HostPathDir: "/mnt/nfs",
 						NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
-							Image: pointer.String("INVALID IMAGE"),
+							Image: ptr.To("INVALID IMAGE"),
 						},
 					},
 				}

@@ -32,7 +32,11 @@ func (m *DeploymentManager) GetResourceName() string {
 
 // EnsureResource ensures the Deployment exists
 func (m *DeploymentManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
-	log := m.Log.WithValues("resource", m.GetResourceName())
+	log := m.Log.WithValues(
+		"resource", m.GetResourceName(),
+		"nfsprovisioner.name", nfsProvisioner.Name,
+		"nfsprovisioner.namespace", nfsProvisioner.Namespace,
+	)
 
 	// Check if the deployment already exists
 	deployFound := &appsv1.Deployment{}
@@ -43,16 +47,21 @@ func (m *DeploymentManager) EnsureResource(ctx context.Context, nfsProvisioner *
 
 		// Set NFSProvisioner instance as the owner and controller
 		if err := ctrl.SetControllerReference(nfsProvisioner, dep, m.Scheme); err != nil {
+			log.Error(err, "Failed to set controller reference on Deployment")
 			return err
 		}
 
-		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		log.Info("Creating Deployment", "deployment.namespace", dep.Namespace, "deployment.name", dep.Name)
 		if err = m.Client.Create(ctx, dep); err != nil {
-			log.Error(err, "Failed to create a Deployment for NFSProvisioner", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			log.Error(err, "Failed to create Deployment", "deployment.namespace", dep.Namespace, "deployment.name", dep.Name)
 			return err
 		}
+		log.Info("Successfully created Deployment", "deployment.namespace", dep.Namespace, "deployment.name", dep.Name)
 	} else if err != nil {
+		log.Error(err, "Failed to get Deployment")
 		return err
+	} else {
+		log.V(1).Info("Deployment already exists", "deployment.namespace", deployFound.Namespace, "deployment.name", deployFound.Name)
 	}
 
 	return nil

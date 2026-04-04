@@ -32,12 +32,16 @@ func (m *PVCManager) GetResourceName() string {
 
 // EnsureResource ensures the PVC exists when using PVC storage type
 func (m *PVCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1alpha1.NFSProvisioner) error {
-	log := m.Log.WithValues("resource", m.GetResourceName())
+	log := m.Log.WithValues(
+		"resource", m.GetResourceName(),
+		"nfsprovisioner.name", nfsProvisioner.Name,
+		"nfsprovisioner.namespace", nfsProvisioner.Namespace,
+	)
 
 	// Build PVC using builder (returns nil if not needed)
 	pvc := builder.BuildPVC(nfsProvisioner)
 	if pvc == nil {
-		log.Info("Skipping PVC creation - not using PVC storage")
+		log.V(1).Info("Skipping PVC creation - not using PVC storage")
 		return nil
 	}
 
@@ -54,22 +58,27 @@ func (m *PVCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 		// Only create PVC if we're supposed to manage it (not using existing PVC)
 		if nfsProvisioner.Spec.Pvc != "" {
 			// User specified an existing PVC that doesn't exist
-			log.Error(err, "Specified PVC does not exist", "PVC.Name", pvcName)
+			log.Error(err, "Specified PVC does not exist", "pvc.name", pvcName)
 			return err
 		}
 
 		// Set NFSProvisioner instance as the owner and controller
 		if err := ctrl.SetControllerReference(nfsProvisioner, pvc, m.Scheme); err != nil {
+			log.Error(err, "Failed to set controller reference on PVC")
 			return err
 		}
 
-		log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+		log.Info("Creating PersistentVolumeClaim", "pvc.namespace", pvc.Namespace, "pvc.name", pvc.Name)
 		if err = m.Client.Create(ctx, pvc); err != nil {
-			log.Error(err, "Failed to create a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
+			log.Error(err, "Failed to create PersistentVolumeClaim", "pvc.namespace", pvc.Namespace, "pvc.name", pvc.Name)
 			return err
 		}
+		log.Info("Successfully created PersistentVolumeClaim", "pvc.namespace", pvc.Namespace, "pvc.name", pvc.Name)
 	} else if err != nil {
+		log.Error(err, "Failed to get PersistentVolumeClaim")
 		return err
+	} else {
+		log.V(1).Info("PersistentVolumeClaim already exists", "pvc.namespace", pvcFound.Namespace, "pvc.name", pvcFound.Name)
 	}
 
 	return nil

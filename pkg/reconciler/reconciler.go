@@ -16,6 +16,21 @@ import (
 	"github.com/jooho/nfs-provisioner-operator/pkg/validation"
 )
 
+// Phase constants for NFSProvisioner lifecycle
+const (
+	// PhasePending indicates the NFSProvisioner is pending reconciliation
+	PhasePending = "Pending"
+
+	// PhaseProgressing indicates the NFSProvisioner is being reconciled
+	PhaseProgressing = "Progressing"
+
+	// PhaseReady indicates the NFSProvisioner is ready and all resources are created
+	PhaseReady = "Ready"
+
+	// PhaseFailed indicates the NFSProvisioner has encountered a permanent error
+	PhaseFailed = "Failed"
+)
+
 // Reconciler orchestrates the reconciliation logic for NFSProvisioner resources.
 // It coordinates validation, defaults application, and resource management in a modular way.
 type Reconciler interface {
@@ -35,8 +50,8 @@ type Reconciler interface {
 type reconciler struct {
 	client    client.Client
 	validator validation.Validator
-	managers  []resources.ResourceManager
 	logger    logr.Logger
+	managers  []resources.ResourceManager
 }
 
 // NewReconciler creates a new Reconciler with dependency injection.
@@ -66,7 +81,23 @@ func NewReconciler(
 // Reconcile implements the Reconciler interface.
 // It orchestrates validation → defaults → resource creation → status update.
 func (r *reconciler) Reconcile(ctx context.Context, nfs *cachev1alpha1.NFSProvisioner) (ctrl.Result, error) {
-	log := r.logger.WithValues("nfsprovisioner", client.ObjectKeyFromObject(nfs))
+	log := r.logger.WithValues(
+		"nfsprovisioner", client.ObjectKeyFromObject(nfs),
+		"generation", nfs.Generation,
+	)
+
+	// Step 0: Set Progressing condition at start of reconciliation
+	generation := nfs.Generation
+	SetProgressingCondition(nfs, generation)
+	nfs.Status.Phase = PhaseProgressing
+	nfs.Status.ObservedGeneration = generation
+
+	// Update status immediately to indicate reconciliation has started
+	if err := r.updateStatus(ctx, nfs); err != nil {
+		log.Error(err, "Failed to update status to Progressing")
+		// Continue anyway - this is non-critical
+	}
+	log.Info("Started reconciliation", "phase", nfs.Status.Phase)
 
 	// Step 1: Apply defaults to unset fields
 	defaults.ApplyDefaults(nfs)
@@ -89,24 +120,84 @@ func (r *reconciler) Reconcile(ctx context.Context, nfs *cachev1alpha1.NFSProvis
 	}
 
 	// Step 4: Update status to reflect successful reconciliation
-	// (Status update logic will be added in Phase 4: User Story 2)
+	SetReadyCondition(nfs, generation)
+	SetProgressingConditionFalse(nfs, generation)
+	SetDegradedConditionFalse(nfs, generation)
+	nfs.Status.Phase = PhaseReady
+	nfs.Status.ObservedGeneration = generation
 
-	log.Info("Reconciliation completed successfully")
+	// Step 5: Check Deployment availability and set Available condition
+	if err := SetAvailableCondition(ctx, r.client, nfs, generation); err != nil {
+		log.V(1).Info("Failed to check Deployment availability", "error", err.Error())
+		// Non-critical error - deployment may not exist yet
+	}
+
+	// Step 6: Update final status
+	if err := r.updateStatus(ctx, nfs); err != nil {
+		log.Error(err, "Failed to update final status")
+		// Return error to trigger retry
+		return ctrl.Result{}, err
+	}
+
+	log.Info("Reconciliation completed successfully", "phase", nfs.Status.Phase)
 	return ctrl.Result{}, nil
+}
+
+// updateStatus updates the NFSProvisioner status subresource.
+//
+// This function uses the status writer to update only the status subresource,
+// not the entire CR. This is important for proper Kubernetes reconciliation.
+//
+// Parameters:
+//   - ctx: The context for the operation
+//   - nfs: The NFSProvisioner resource with updated status fields
+//
+// Returns:
+//   - error: Non-nil if the status update fails
+func (r *reconciler) updateStatus(ctx context.Context, nfs *cachev1alpha1.NFSProvisioner) error {
+	if err := r.client.Status().Update(ctx, nfs); err != nil {
+		r.logger.Error(err, "Failed to update NFSProvisioner status",
+			"namespace", nfs.Namespace,
+			"name", nfs.Name,
+			"phase", nfs.Status.Phase,
+		)
+		return err
+	}
+	return nil
 }
 
 // handleValidationError handles validation errors (permanent errors - no retry).
 // Validation errors are user errors that require CR modification.
 func (r *reconciler) handleValidationError(ctx context.Context, nfs *cachev1alpha1.NFSProvisioner, err error) (ctrl.Result, error) {
-	r.logger.Info("Validation error - no requeue", "error", err.Error())
+	generation := nfs.Generation
+	r.logger.Info("Validation error - no requeue",
+		"error", err.Error(),
+		"namespace", nfs.Namespace,
+		"name", nfs.Name,
+	)
+
+	// Set status conditions to reflect validation failure
+	SetReadyConditionFalse(nfs, generation, ReasonValidationError, err.Error())
+	SetProgressingConditionFalse(nfs, generation)
+	SetDegradedConditionForValidation(nfs, generation, err)
+	nfs.Status.Phase = PhaseFailed
+	nfs.Status.ObservedGeneration = generation
+
+	// Update status to reflect validation error
+	if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
+		r.logger.Error(updateErr, "Failed to update status after validation error")
+		// Return update error to trigger retry
+		return ctrl.Result{}, updateErr
+	}
+
 	// Do not requeue for validation errors - user must fix the CR
-	// In Phase 4 (User Story 2), we'll set status.Conditions with Degraded=True
 	return ctrl.Result{}, nil
 }
 
 // handleResourceError handles resource creation/update errors.
 // These may be transient (API server unavailable) or permanent (quota exceeded).
 func (r *reconciler) handleResourceError(ctx context.Context, nfs *cachev1alpha1.NFSProvisioner, resourceName string, err error) (ctrl.Result, error) {
+	generation := nfs.Generation
 	errorType := classifyError(err)
 
 	switch errorType {
@@ -114,22 +205,71 @@ func (r *reconciler) handleResourceError(ctx context.Context, nfs *cachev1alpha1
 		// Transient errors: Let controller-runtime handle exponential backoff
 		r.logger.Info("Transient error - will retry with exponential backoff",
 			"resource", resourceName,
-			"error", err.Error())
+			"error", err.Error(),
+			"namespace", nfs.Namespace,
+			"name", nfs.Name,
+		)
+
+		// Set status conditions to reflect transient error
+		SetReadyConditionFalse(nfs, generation, ReasonResourceError, fmt.Sprintf("Failed to create/update %s: %v", resourceName, err))
+		SetDegradedCondition(nfs, generation, err)
+		nfs.Status.Phase = PhaseProgressing // Still progressing, will retry
+		nfs.Status.ObservedGeneration = generation
+
+		// Update status
+		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
+			r.logger.Error(updateErr, "Failed to update status after transient error")
+			// Return original error - controller-runtime will retry
+		}
+
+		// Return error to trigger exponential backoff
 		return ctrl.Result{}, err
 
 	case errorTypePermanent:
 		// Permanent errors: Requeue after 5 minutes
 		r.logger.Info("Permanent error - will retry after 5 minutes",
 			"resource", resourceName,
-			"error", err.Error())
-		// In Phase 4 (User Story 2), we'll set status.Conditions with Degraded=True
+			"error", err.Error(),
+			"namespace", nfs.Namespace,
+			"name", nfs.Name,
+		)
+
+		// Set status conditions to reflect permanent error
+		SetReadyConditionFalse(nfs, generation, ReasonResourceError, fmt.Sprintf("Failed to create/update %s: %v", resourceName, err))
+		SetProgressingConditionFalse(nfs, generation)
+		SetDegradedConditionForResource(nfs, generation, resourceName, err)
+		nfs.Status.Phase = PhaseFailed
+		nfs.Status.ObservedGeneration = generation
+
+		// Update status
+		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
+			r.logger.Error(updateErr, "Failed to update status after permanent error")
+			// Continue with requeue anyway
+		}
+
+		// Requeue after delay for permanent errors
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 
 	default:
 		// Unknown errors: Treat as transient
 		r.logger.Info("Unknown error - treating as transient",
 			"resource", resourceName,
-			"error", err.Error())
+			"error", err.Error(),
+			"namespace", nfs.Namespace,
+			"name", nfs.Name,
+		)
+
+		// Set status conditions for unknown error (treat as transient)
+		SetReadyConditionFalse(nfs, generation, ReasonResourceError, fmt.Sprintf("Failed to create/update %s: %v", resourceName, err))
+		SetDegradedCondition(nfs, generation, err)
+		nfs.Status.Phase = PhaseProgressing
+		nfs.Status.ObservedGeneration = generation
+
+		// Update status
+		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
+			r.logger.Error(updateErr, "Failed to update status after unknown error")
+		}
+
 		return ctrl.Result{}, err
 	}
 }
@@ -211,29 +351,6 @@ func isEventError(err error) bool {
 	// Simple heuristic: check if error message contains "Event"
 	// More sophisticated check could use error wrapping
 	errMsg := err.Error()
-	return len(errMsg) > 0 && (errMsg[0:5] == "Event" ||
+	return errMsg != "" && (len(errMsg) >= 5 && errMsg[0:5] == "Event" ||
 		len(errMsg) > 10 && errMsg[len(errMsg)-5:] == "Event")
-}
-
-// ReconcilerStatus represents the current state of reconciliation.
-// This will be expanded in Phase 4 (User Story 2) to include Conditions.
-type ReconcilerStatus struct {
-	Phase             string
-	ObservedGeneration int64
-	Message           string
-}
-
-// newReconcilerStatus creates a ReconcilerStatus from an NFSProvisioner resource.
-func newReconcilerStatus(nfs *cachev1alpha1.NFSProvisioner, phase string, message string) ReconcilerStatus {
-	return ReconcilerStatus{
-		Phase:             phase,
-		ObservedGeneration: nfs.Generation,
-		Message:           message,
-	}
-}
-
-// String returns a human-readable representation of the ReconcilerStatus.
-func (s ReconcilerStatus) String() string {
-	return fmt.Sprintf("Phase=%s, ObservedGeneration=%d, Message=%s",
-		s.Phase, s.ObservedGeneration, s.Message)
 }
