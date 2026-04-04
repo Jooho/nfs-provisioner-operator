@@ -1,0 +1,14 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+approvers:
+  - jooho
+
+reviewers:
+  - jooho
+
+# Maintainers
+# This file defines who can approve and review PRs for this repository.
+# The following people are the maintainers of the NFS Provisioner Operator.
+#
+# Email: ljhiyh@gmail.com
+# GitHub: @jooho

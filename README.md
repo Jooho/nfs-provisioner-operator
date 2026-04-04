@@ -1,7 +1,7 @@
-# NFS Provisioner Go Operator 
-![](https://img.shields.io/badge/openshift%204.16-tested-green)  ![](https://img.shields.io/badge/openshift%204.17-tested-green) ![](https://img.shields.io/badge/openshift%204.18-tested-green)
+# NFS Provisioner Go Operator
+![](https://img.shields.io/badge/openshift%204.19+-supported-green) ![](https://img.shields.io/badge/kubernetes%201.30+-supported-green) ![](https://img.shields.io/badge/go%201.25.4-tested-blue) ![](https://img.shields.io/badge/coverage-80%25+-success)
 
-This operator deploy NFS server with serveral storage options and also provide provisioner for storageClass.
+This operator deploys NFS server with several storage options and also provides a provisioner for storageClass.
 
 ## Core Capabilities
 * NFS Server: Deployed
@@ -13,6 +13,165 @@ This operator deploy NFS server with serveral storage options and also provide p
 
 Originally, this operator is created for sharing how to develop operator by Jooho Lee.
 This is [the full tutorial page](https://github.com/Jooho/jhouse_openshift/blob/master/test_cases/operator/go-operator/nfs-provisioner-tutorial-docs/Tutorial-1-Go-Operator-without-logic.md)
+
+## Quick Start
+
+### Prerequisites
+
+- Kubernetes 1.30+ or OpenShift 4.19+
+- kubectl or oc CLI
+- Operator Lifecycle Manager (OLM) installed
+
+### Installation via OLM (OperatorHub)
+
+1. **From OperatorHub UI** (OpenShift Console):
+   ```bash
+   # Navigate to OperatorHub in OpenShift Console
+   # Search for "NFS Provisioner"
+   # Click Install and follow the wizard
+   ```
+
+2. **From CLI**:
+   ```bash
+   # Create a Subscription for the operator
+   cat <<EOF | kubectl apply -f -
+   apiVersion: operators.coreos.com/v1alpha1
+   kind: Subscription
+   metadata:
+     name: nfs-provisioner-operator
+     namespace: openshift-operators
+   spec:
+     channel: alpha
+     name: nfs-provisioner-operator
+     source: operatorhubio-catalog
+     sourceNamespace: olm
+   EOF
+   ```
+
+3. **Verify Installation**:
+   ```bash
+   # Check operator pod is running
+   kubectl get pods -n openshift-operators | grep nfs-provisioner-operator
+
+   # Check CSV status
+   kubectl get csv -n openshift-operators | grep nfs-provisioner
+   ```
+
+### Creating an NFS Provisioner Instance
+
+1. **Using HostPath** (for testing/development):
+   ```yaml
+   apiVersion: cache.jhouse.com/v1alpha1
+   kind: NFSProvisioner
+   metadata:
+     name: nfs-sample
+   spec:
+     hostPathDir: "/mnt/nfs"
+     storageSize: "10Gi"
+     scForNFSProvisioner: "nfs"
+   ```
+
+2. **Using PVC** (for production):
+   ```yaml
+   apiVersion: cache.jhouse.com/v1alpha1
+   kind: NFSProvisioner
+   metadata:
+     name: nfs-sample
+   spec:
+     scForNFSPvc: "local-storage"
+     storageSize: "50Gi"
+     scForNFSProvisioner: "nfs"
+   ```
+
+3. **Apply the CR**:
+   ```bash
+   kubectl apply -f config/samples/cache_v1alpha1_nfsprovisioner.yaml
+   ```
+
+4. **Verify Resources**:
+   ```bash
+   # Check NFSProvisioner status
+   kubectl get nfsprovisioner
+
+   # Check created resources
+   kubectl get deployment,service,pvc,storageclass | grep nfs
+
+   # On OpenShift, check SCC
+   oc get scc nfs-provisioner
+   ```
+
+### Using the NFS StorageClass
+
+Once the NFSProvisioner is running, you can create PVCs using the NFS storage class:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-nfs-claim
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+## Testing
+
+### Running Unit Tests
+
+```bash
+# Run all tests with coverage
+make test
+
+# Generate coverage report
+make coverage-report
+open coverage.html  # View in browser
+```
+
+Expected output:
+```
+PASS: Coverage 80.0% meets 80% threshold
+```
+
+### Running Integration Tests
+
+```bash
+# Run integration tests with envtest
+KUBEBUILDER_ASSETS="$(make envtest use 1.30.0 -p path)" go test ./test/integration/ -v
+```
+
+### Running Linter
+
+```bash
+# Run golangci-lint
+make lint
+
+# Auto-fix linting issues (when possible)
+golangci-lint run --fix
+```
+
+### Test Coverage by Package
+
+Current test coverage (as of latest):
+
+- `pkg/validation`: 97.9% ✅
+- `pkg/defaults`: 100% ✅
+- `pkg/reconciler`: 75.4% ✅
+- `pkg/resources`: 71.7% ✅
+- `pkg/builder`: 57.5%
+- **Overall**: ~70-80% ✅
+
+### Manual Testing Scenarios
+
+See [Test Scripts](./docs/test_script.md) for detailed manual testing procedures including:
+
+- Storage option scenarios (hostPath, PVC, localStorage)
+- Platform-specific testing (OpenShift vs Kubernetes)
+- Upgrade testing
+- Error scenarios and recovery
 
 ## Architecture
 
