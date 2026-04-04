@@ -1,0 +1,18 @@
+apiVersion: cache.jhouse.com/v1alpha1
+kind: NFSProvisioner
+metadata:
+  name: nfs-server
+spec:
+  # Storage size for NFS server PVC (when using default StorageClass)
+  storageSize: "10Gi"
+  # Image configuration is optional - defaults to registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8
+  # nfsImageConfiguration:
+  #   image: registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8
+  #   imagePullPolicy: IfNotPresent
+  #
+  # Note: This example uses the operator's default behavior:
+  # - Creates a PVC using the default StorageClass
+  # - Creates NFS Deployment with nfs-provisioner image
+  # - Creates NFS Service
+  # - Creates "nfs" StorageClass for dynamic provisioning
+  # - (On OpenShift) Creates SecurityContextConstraints (SCC)

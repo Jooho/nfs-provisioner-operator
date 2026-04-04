@@ -1,23 +1,24 @@
-# Test Scripts
+# Testing Guide
 
-This document provides comprehensive testing guidance for the NFS Provisioner Operator, covering unit tests, integration tests, and end-to-end testing scenarios.
+Comprehensive testing guidance for the NFS Provisioner Operator, covering unit tests, integration tests, and end-to-end testing scenarios.
 
 ## Table of Contents
 
-- [Unit Testing with Ginkgo/Gomega](#unit-testing-with-ginkgogomega)
+- [Unit Testing with Ginkgo v2](#unit-testing-with-ginkgo-v2)
 - [Integration Testing](#integration-testing)
 - [Coverage Requirements](#coverage-requirements)
 - [End-to-End Testing](#end-to-end-testing)
 - [Manual Testing Scenarios](#manual-testing-scenarios)
 
-## Unit Testing with Ginkgo/Gomega
+## Unit Testing with Ginkgo v2
 
 ### Framework Overview
 
-We use **Ginkgo v2** as our testing framework and **Gomega** for assertions.
+This project uses **Ginkgo v2** for BDD-style testing and **Gomega** for expressive assertions.
 
-- **Ginkgo**: BDD-style testing framework with hierarchical test organization
-- **Gomega**: Matcher library with expressive assertions
+- **Ginkgo v2**: Modern BDD testing framework with hierarchical organization, parallel execution, and interruptible test nodes
+- **Gomega**: Rich matcher library for clear, expressive test assertions
+- **Key Feature**: SpecContext pattern for proper context handling and test cancellation
 
 ### Basic Test Structure
 

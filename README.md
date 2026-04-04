@@ -1,26 +1,29 @@
 # NFS Provisioner Go Operator
-![](https://img.shields.io/badge/openshift%204.19+-supported-green) ![](https://img.shields.io/badge/kubernetes%201.30+-supported-green) ![](https://img.shields.io/badge/go%201.25.4-tested-blue) ![](https://img.shields.io/badge/coverage-80%25+-success)
+![](https://img.shields.io/badge/openshift%204.19+-supported-green) ![](https://img.shields.io/badge/kubernetes%201.30+-supported-green) ![](https://img.shields.io/badge/go%201.24-tested-blue) ![](https://img.shields.io/badge/coverage-80%25+-success)
 
-This operator deploys NFS server with several storage options and also provides a provisioner for storageClass.
+Kubernetes operator that deploys an NFS server with flexible storage options and provides a StorageClass for dynamic PersistentVolume provisioning.
 
 ## Core Capabilities
-* NFS Server: Deployed
-* NFS Provisioner: Help customers to create PV using StorageClass
-* StorageClass: Dynamically create PV for requested PVC
-## NFS Provisioner Operator Features
-* NFS Server can use localStorage PVC or HostPath on the node
 
-
-Originally, this operator is created for sharing how to develop operator by Jooho Lee.
-This is [the full tutorial page](https://github.com/Jooho/jhouse_openshift/blob/master/test_cases/operator/go-operator/nfs-provisioner-tutorial-docs/Tutorial-1-Go-Operator-without-logic.md)
+- **NFS Server Deployment** — Automated NFS server setup with multiple storage backends
+- **Dynamic Provisioning** — StorageClass-based dynamic PV creation with NFS backend
+- **Flexible Storage** — Support for default StorageClass, specific StorageClass, existing PVC, or HostPath storage
+- **Platform Support** — Works on vanilla Kubernetes and OpenShift (automatic SCC configuration)
+- **Production-Ready** — 80%+ test coverage, comprehensive error handling, structured logging
 
 ## Quick Start
+
+Start running the operator in minutes:
+
+- **For local testing** → [Quick Start Guide](./docs/quickstart.md) (non-OLM install)
+- **For production** → [OLM Installation](#installation-via-olm-operatorhub)
+- **For development** → [Setup Dev Env](./docs/setup_development.md)
 
 ### Prerequisites
 
 - Kubernetes 1.30+ or OpenShift 4.19+
 - kubectl or oc CLI
-- Operator Lifecycle Manager (OLM) installed
+- (Optional) Operator Lifecycle Manager (OLM) for OperatorHub installation
 
 ### Installation via OLM (OperatorHub)
 
@@ -57,48 +60,82 @@ This is [the full tutorial page](https://github.com/Jooho/jhouse_openshift/blob/
    kubectl get csv -n openshift-operators | grep nfs-provisioner
    ```
 
+### Non-OLM Installation
+
+For faster setup without OLM, see the [Quick Start Guide](./docs/quickstart.md).
+
+```bash
+# Install CRDs
+kubectl apply -f config/crd/bases/
+
+# Run operator locally or deploy to cluster
+make run  # Local development
+# OR
+make deploy IMG=quay.io/myrepo/nfs-provisioner:latest  # Cluster deployment
+```
+
 ### Creating an NFS Provisioner Instance
 
-1. **Using HostPath** (for testing/development):
+The operator supports four storage modes. Pick one based on your needs:
+
+1. **Default StorageClass** (simplest):
    ```yaml
    apiVersion: cache.jhouse.com/v1alpha1
    kind: NFSProvisioner
    metadata:
-     name: nfs-sample
+     name: nfs-server
    spec:
-     hostPathDir: "/mnt/nfs"
      storageSize: "10Gi"
-     scForNFSProvisioner: "nfs"
    ```
 
-2. **Using PVC** (for production):
+2. **Specific StorageClass**:
    ```yaml
    apiVersion: cache.jhouse.com/v1alpha1
    kind: NFSProvisioner
    metadata:
-     name: nfs-sample
+     name: nfs-server
    spec:
      scForNFSPvc: "local-storage"
      storageSize: "50Gi"
-     scForNFSProvisioner: "nfs"
    ```
 
-3. **Apply the CR**:
-   ```bash
-   kubectl apply -f config/samples/cache_v1alpha1_nfsprovisioner.yaml
+3. **Existing PVC**:
+   ```yaml
+   apiVersion: cache.jhouse.com/v1alpha1
+   kind: NFSProvisioner
+   metadata:
+     name: nfs-server
+   spec:
+     pvc: "my-existing-pvc"
    ```
 
-4. **Verify Resources**:
-   ```bash
-   # Check NFSProvisioner status
-   kubectl get nfsprovisioner
-
-   # Check created resources
-   kubectl get deployment,service,pvc,storageclass | grep nfs
-
-   # On OpenShift, check SCC
-   oc get scc nfs-provisioner
+4. **HostPath** (development only):
+   ```yaml
+   apiVersion: cache.jhouse.com/v1alpha1
+   kind: NFSProvisioner
+   metadata:
+     name: nfs-server
+   spec:
+     hostPathDir: "/data/nfs"
+     nodeSelector:
+       app: nfs-provisioner
    ```
+
+Deploy and verify:
+
+```bash
+# Create NFSProvisioner
+kubectl apply -f config/samples/cache_v1alpha1_nfsprovisioner_default_sc.yaml
+
+# Check status
+kubectl get nfsprovisioner
+
+# Verify resources were created
+kubectl get deployment,service,pvc,storageclass | grep nfs
+
+# On OpenShift, verify SCC
+oc get scc nfs-provisioner
+```
 
 ### Using the NFS StorageClass
 
@@ -249,19 +286,27 @@ This architecture enables:
 - Comprehensive test coverage (80%+ target)
 
 ## Documentation
-- Storage Options
-  - [localStorage](./docs/storage_option_localStorage.md)
-  - [hostPath](./docs/storage_option_hostPath.md)
-  - [storageClass](./config/samples/cache_v1alpha1_nfsprovisioner.yaml)
-  - [PVC](./config/samples/cache_v1alpha1_nfsprovisioner_pvc.yaml)
 
-- Development
-  - [Makefile playbook](./docs/makefile_playbook.md)
-  - [Build a new image](./docs/new_image.md)
-  - [Test Scripts](./docs/test_script.md)
-  - [Setup Dev Env](./docs/setup_development.md)
+### Getting Started
+- **[Quick Start Guide](./docs/quickstart.md)** — Non-OLM installation and basic usage
+- **[Setup Dev Env](./docs/setup_development.md)** — Development environment setup
 
-- [Manual Installation](./docs/manual_deploy.md)
+### Guides
+- **[Makefile Targets](./docs/makefile_playbook.md)** — Available make commands and workflows
+- **[Testing Guide](./docs/test_script.md)** — Unit, integration, and E2E testing
+- **[Architecture](./docs/architecture.md)** — Detailed design, modules, and data flow
+- **[Manual Installation](./docs/manual_deploy.md)** — Manual kubectl-based deployment
+
+### Storage Configuration
+- **[LocalStorage](./docs/storage_option_localStorage.md)** — Using StorageClass-provisioned storage
+- **[HostPath](./docs/storage_option_hostPath.md)** — Using node local filesystem
+- **[Build New Image](./docs/new_image.md)** — Creating custom NFS provisioner images
+
+### Sample Resources
+- Default StorageClass: [cache_v1alpha1_nfsprovisioner_default_sc.yaml](./config/samples/cache_v1alpha1_nfsprovisioner_default_sc.yaml)
+- Specific StorageClass: [cache_v1alpha1_nfsprovisioner.yaml](./config/samples/cache_v1alpha1_nfsprovisioner.yaml)
+- Existing PVC: [cache_v1alpha1_nfsprovisioner_pvc.yaml](./config/samples/cache_v1alpha1_nfsprovisioner_pvc.yaml)
+- HostPath: [cache_v1alpha1_nfsprovisioner_hostPath.yaml](./config/samples/cache_v1alpha1_nfsprovisioner_hostPath.yaml)
 
 
 ## The first steps, if you have all binaries
