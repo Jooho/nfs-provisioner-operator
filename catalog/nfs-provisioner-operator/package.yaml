@@ -1,0 +1,4 @@
+---
+schema: olm.package
+name: nfs-provisioner-operator
+defaultChannel: alpha

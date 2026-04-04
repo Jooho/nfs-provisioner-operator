@@ -32,7 +32,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/jooho/nfs-provisioner-operator
     support: NFS
-  name: nfs-provisioner-operator.v0.0.8
+  name: nfs-provisioner-operator.v0.0.9
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -454,5 +454,5 @@ spec:
   provider:
     name: Jooho Lee
     url: https://github.com/jooho/nfs-provisioner-operator
-  replaces: nfs-provisioner-operator.v0.0.7
-  version: 0.0.8
+  replaces: nfs-provisioner-operator.v0.0.8
+  version: 0.0.9
