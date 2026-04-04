@@ -23,45 +23,22 @@ import (
 
 // NFSProvisionerSpec defines the desired state of NFSProvisioner
 type NFSProvisionerSpec struct {
-	// HostPathDir is the direcotry where NFS server will use.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="HostPath directory",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
-	HostPathDir string `json:"hostPathDir,omitempty"`
-
-	// PVC Name is the PVC resource that already created for NFS server.
-	// Do not set StorageClass name with this param. Then, operator will fail to deploy NFS Server.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PVC Name",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
-	Pvc string `json:"pvc,omitempty"`
-
-	// StorageSize is the PVC size for NFS server.
-	// By default, it sets 10G.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Storage Size",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string", "urn:alm:descriptor:io.kubernetes:custom"}
-	StorageSize string `json:"storageSize,omitempty"`
-
-	// StorageClass Name for NFS server will provide a PVC for NFS server.
-	// Do not set PVC name with this param. Then, operator will fail to deploy NFS Server
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="StorageClass Name for NFS server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string","urn:alm:descriptor:io.kubernetes:custom"}
-	SCForNFSPvc string `json:"scForNFSPvc,omitempty"` //https://golang.org/pkg/encoding/json/
-
-	// NFS server will be running on a specific node by NodeSeletor
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// StorageClass Name for NFS Provisioner is the StorageClass name that NFS Provisioner will use. Default value is `nfs`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="StorageClass Name for NFS Provisioner",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:string","urn:alm:descriptor:io.kubernetes:custom"}
-	SCForNFSProvisioner string `json:"scForNFS,omitempty"` //https://golang.org/pkg/encoding/json/
-
-	// NFSImageConfigurations hold the image configuration
-	// +operator-sdk:csv:customresourcedefinitions:displayName="NFS Image Configuration,resources={{pod,v1,test}}"
+	NodeSelector          map[string]string   `json:"nodeSelector,omitempty"`
 	NFSImageConfiguration *ImageConfiguration `json:"nfsImageConfiguration,omitempty"`
+	HostPathDir           string              `json:"hostPathDir,omitempty"`
+	Pvc                   string              `json:"pvc,omitempty"`
+	StorageSize           string              `json:"storageSize,omitempty"`
+	SCForNFSPvc           string              `json:"scForNFSPvc,omitempty"`
+	SCForNFSProvisioner   string              `json:"scForNFS,omitempty"`
 }
 
 // NFSProvisionerStatus defines the observed state of NFSProvisioner
 type NFSProvisionerStatus struct {
-
-	// Nodes are the names of the NFS pods
-	Nodes []string `json:"nodes"`
-	// Error show error messages briefly
-	Error string `json:"error"`
+	Phase              string             `json:"phase,omitempty"`
+	Error              string             `json:"error,omitempty"`
+	Conditions         []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	Nodes              []string           `json:"nodes,omitempty"`
+	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
 }
 
 // ImageConfiguration holds configuration of the image to use
@@ -82,11 +59,10 @@ type ImageConfiguration struct {
 // NFSProvisioner is the Schema for the nfsprovisioners API
 // +operator-sdk:csv:customresourcedefinitions:displayName="NFS Provisioner App",resources={{ServiceAccount,v1,nfs-provisioner},{SecurityContextConstraints,v1,nfs-provisioner},{Deployment,v1,nfs-provisioner},{PersistentVolumeClaim,v1,nfs-server},{ClusterRole,v1,nfs-provisioner-runner},{ClusterRoleBinding,v1,nfs-provisioner-runner},{Role,v1,leader-locking-nfs-provisioner},{RoleBinding,v1,leader-locking-nfs-provisioner},{Service,v1,nfs-provisioner},{StorageClass,v1,nfs}}
 type NFSProvisioner struct {
+	Spec              NFSProvisionerSpec `json:"spec,omitempty"`
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   NFSProvisionerSpec   `json:"spec,omitempty"`
-	Status NFSProvisionerStatus `json:"status,omitempty"`
+	Status            NFSProvisionerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

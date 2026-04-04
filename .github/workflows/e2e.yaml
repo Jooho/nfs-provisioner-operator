@@ -1,0 +1,85 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  OPERATOR_IMG: quay.io/jooholee/nfs-provisioner-operator
+  OPERATOR_NAMESPACE: nfs-provisioner-operator
+
+jobs:
+  build-image:
+    name: Build & Push Operator Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build operator image
+        run: docker build -t ${{ env.OPERATOR_IMG }}:ci .
+
+      - name: Push to quay.io (PR tag)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "${{ secrets.QUAY_PASSWORD }}" | docker login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
+          docker tag ${{ env.OPERATOR_IMG }}:ci ${{ env.OPERATOR_IMG }}:pr-${{ github.event.pull_request.number }}
+          docker push ${{ env.OPERATOR_IMG }}:pr-${{ github.event.pull_request.number }}
+
+      - name: Save image for E2E
+        run: docker save ${{ env.OPERATOR_IMG }}:ci -o /tmp/operator-image.tar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: operator-image
+          path: /tmp/operator-image.tar
+          retention-days: 1
+
+  e2e:
+    name: E2E Tests (Kind)
+    runs-on: ubuntu-latest
+    needs: build-image
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+          config: .github/kind-config.yaml
+
+      - name: Download operator image
+        uses: actions/download-artifact@v4
+        with:
+          name: operator-image
+          path: /tmp
+
+      - name: Load operator image into Kind
+        run: |
+          docker load -i /tmp/operator-image.tar
+          kind load docker-image ${{ env.OPERATOR_IMG }}:ci
+
+      - name: Deploy operator to cluster
+        run: |
+          kubectl apply -f config/crd/bases/
+          kubectl create namespace ${{ env.OPERATOR_NAMESPACE }}
+
+          cd config/manager && kustomize edit set image controller=${{ env.OPERATOR_IMG }}:ci
+          cd ../..
+          kustomize build config/default | kubectl apply -f -
+
+          kubectl wait --for=condition=available deployment/nfs-provisioner-operator-controller-manager \
+            -n ${{ env.OPERATOR_NAMESPACE }} --timeout=120s
+
+          kubectl get pods -n ${{ env.OPERATOR_NAMESPACE }}
+
+      - name: Run E2E tests
+        run: go test ./test/e2e/ -v -timeout 10m -count=1
+
+      - name: Gather debug info
+        if: always()
+        run: ./test/scripts/status-check.sh

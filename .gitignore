@@ -26,3 +26,6 @@ setup-envtest.sh
 *.swp
 *.swo
 *~
+.bkit/
+cover*.out
+vendor/

@@ -98,9 +98,35 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: lint
+lint: ## Run golangci-lint with auto-fix.
+	golangci-lint run --fix
+
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run tests with 80% coverage enforcement.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	@echo "Checking coverage threshold (80%)..."
+	@go tool cover -func=cover.out | grep total | awk '{if ($$3+0 < 80.0) {print "FAIL: Coverage " $$3 " is below 80%"; exit 1} else {print "PASS: Coverage " $$3 " meets 80% threshold"}}'
+
+.PHONY: coverage-report
+coverage-report: ## Generate and open HTML coverage report.
+	@if [ ! -f cover.out ]; then echo "No coverage data found. Run 'make test' first."; exit 1; fi
+	go tool cover -html=cover.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+.PHONY: precommit
+precommit: vet lint ## Pre-commit check: vet + lint + unit tests.
+	go test ./pkg/... -timeout 2m -count=1
+
+.PHONY: test-e2e
+test-e2e: ## Run E2E tests on Kind (requires: kind cluster + local registry at localhost:5001).
+	kubectl apply -f config/crd/bases/
+	go test ./test/e2e/ -v -timeout 10m -count=1
+
+.PHONY: test-e2e-ocp
+test-e2e-ocp: ## Run E2E tests on OpenShift (requires: oc login to OCP cluster).
+	oc apply -f config/crd/bases/
+	E2E_PLATFORM=ocp go test ./test/e2e/ -v -timeout 10m -count=1
 
 ##@ Build
 

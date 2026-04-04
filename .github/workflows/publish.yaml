@@ -1,0 +1,23 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+
+env:
+  OPERATOR_IMG: quay.io/jooholee/nfs-provisioner-operator
+
+jobs:
+  publish:
+    name: Build & Push latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build operator image
+        run: docker build -t ${{ env.OPERATOR_IMG }}:latest .
+
+      - name: Push to quay.io
+        run: |
+          echo "${{ secrets.QUAY_PASSWORD }}" | docker login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
+          docker push ${{ env.OPERATOR_IMG }}:latest
