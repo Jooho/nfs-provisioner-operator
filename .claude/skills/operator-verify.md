@@ -90,21 +90,15 @@ Report test count and pass/fail. If any fail → report but continue.
 
 Only runs if `--scope olm` or `--scope all` (default).
 
-1. **Build operator image:**
+1. **Build images (local only, no push required):**
    ```bash
    podman build --no-cache -t quay.io/jooholee/nfs-provisioner-operator:test .
-   podman push quay.io/jooholee/nfs-provisioner-operator:test
+   podman build -f bundle.Dockerfile -t quay.io/jooholee/nfs-provisioner-operator-bundle:test .
    ```
 
-2. **Build bundle and FBC catalog:**
+2. **Build FBC catalog from local bundle:**
    ```bash
-   podman build -f bundle.Dockerfile -t quay.io/jooholee/nfs-provisioner-operator-bundle:test .
-   podman push quay.io/jooholee/nfs-provisioner-operator-bundle:test
-
-   # Render and build catalog
    mkdir -p /tmp/catalog-test/nfs-provisioner-operator
-   opm render quay.io/jooholee/nfs-provisioner-operator-bundle:test \
-     -o yaml > /tmp/catalog-test/nfs-provisioner-operator/bundle.yaml
 
    cat > /tmp/catalog-test/nfs-provisioner-operator/package.yaml <<EOF
    schema: olm.package
@@ -120,21 +114,82 @@ Only runs if `--scope olm` or `--scope all` (default).
      - name: nfs-provisioner-operator.v{VERSION}
    EOF
 
+   # Render from local bundle directory (no push needed)
+   opm render ./bundle -o yaml > /tmp/catalog-test/nfs-provisioner-operator/bundle.yaml
    opm validate /tmp/catalog-test/
+
+   # Build catalog image
+   cat > /tmp/catalog-test/Dockerfile <<EOF
+   FROM quay.io/operator-framework/opm:latest
+   COPY nfs-provisioner-operator /configs/nfs-provisioner-operator
+   RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
+   EXPOSE 50051
+   ENTRYPOINT ["/bin/opm"]
+   CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
+   EOF
+   docker build -t localhost:5001/nfs-test-catalog:latest /tmp/catalog-test/
+   docker push localhost:5001/nfs-test-catalog:latest
    ```
 
-3. **Deploy via OLM:**
+3. **Kind cluster with local registry (required for OLM):**
+
+   OLM CatalogSource pulls images, so a local registry is needed.
+   Create Kind cluster with local registry support:
    ```bash
-   # Create namespace, CatalogSource, OperatorGroup, Subscription
+   # Start registry
+   docker run -d --restart=always -p 5001:5000 --name kind-registry registry:2
+
+   # Create cluster with registry mirror
+   cat <<EOF | kind create cluster --name kind --config=-
+   kind: Cluster
+   apiVersion: kind.x-k8s.io/v1alpha4
+   nodes:
+     - role: control-plane
+     - role: worker
+   containerdConfigPatches:
+     - |-
+       [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+         endpoint = ["http://kind-registry:5000"]
+   EOF
+
+   # Connect registry to Kind network
+   docker network connect kind kind-registry
+
+   # Load operator images into Kind (direct load)
+   kind load docker-image quay.io/jooholee/nfs-provisioner-operator:test
+
+   # Install OLM
+   operator-sdk olm install
+   ```
+
+4. **Deploy via OLM:**
+   ```bash
+   # Create CatalogSource pointing to local registry
+   kubectl apply -f - <<EOF
+   apiVersion: operators.coreos.com/v1alpha1
+   kind: CatalogSource
+   metadata:
+     name: nfs-test-catalog
+     namespace: olm
+   spec:
+     sourceType: grpc
+     image: localhost:5001/nfs-test-catalog:latest
+     grpcPodConfig:
+       securityContextConfig: restricted
+   EOF
+
+   # Wait for READY, then create Namespace, OperatorGroup, Subscription
    # Wait for CSV Succeeded
    # Create NFSProvisioner CR with default SC
    # Verify: Status=Ready, Available=True, error count=0
    ```
 
-4. **Cleanup:**
+5. **Cleanup:**
    ```bash
    # Delete CR, Subscription, CSV, CatalogSource, namespace
    # Delete cluster-scoped resources (ClusterRole, ClusterRoleBinding, StorageClass, SCC)
+   # kind delete cluster --name kind
+   # docker rm -f kind-registry
    ```
 
 ### Step 7: Code Review (optional)

@@ -114,9 +114,11 @@ After images are pushed:
 
 3. **Generate FBC catalog**:
    ```bash
-   opm render quay.io/jooholee/nfs-provisioner-operator-bundle:{NEW_VERSION} \
-     -o yaml > catalog/nfs-provisioner-operator/v{NEW_VERSION}.yaml
+   # Render from local bundle directory (no push required)
+   opm render ./bundle -o yaml > catalog/nfs-provisioner-operator/v{NEW_VERSION}.yaml
    ```
+   Note: `opm render` from remote registry requires the bundle to be pushed first.
+   Using `./bundle` directory works locally without push.
 
 4. **Update channel**:
    Edit `catalog/nfs-provisioner-operator/channel.yaml` — add new entry:
