@@ -75,7 +75,7 @@ func BuildDeployment(nfs *cachev1alpha1.NFSProvisioner) *appsv1.Deployment {
 								Drop: []corev1.Capability{"KILL", "MKNOD", "SYS_CHROOT"},
 							},
 						},
-						Args: []string{"'-provisioner=example.com/nfs'"},
+						Args: []string{"-provisioner=example.com/nfs"},
 						Env:  buildNFSEnv(),
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "export-volume",

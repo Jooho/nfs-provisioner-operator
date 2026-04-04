@@ -86,18 +86,17 @@ func (r *reconciler) Reconcile(ctx context.Context, nfs *cachev1alpha1.NFSProvis
 		"generation", nfs.Generation,
 	)
 
-	// Step 0: Set Progressing condition at start of reconciliation
 	generation := nfs.Generation
-	SetProgressingCondition(nfs, generation)
-	nfs.Status.Phase = PhaseProgressing
-	nfs.Status.ObservedGeneration = generation
 
-	// Update status immediately to indicate reconciliation has started
-	if err := r.updateStatus(ctx, nfs); err != nil {
-		log.Error(err, "Failed to update status to Progressing")
-		// Continue anyway - this is non-critical
+	// Skip reconciliation if already reconciled for this generation.
+	// Status updates trigger new reconcile events via resourceVersion change;
+	// without this guard the reconciler loops infinitely.
+	if nfs.Status.ObservedGeneration == generation && nfs.Status.Phase == PhaseReady {
+		log.V(1).Info("Already reconciled for this generation, skipping")
+		return ctrl.Result{}, nil
 	}
-	log.Info("Started reconciliation", "phase", nfs.Status.Phase)
+
+	log.Info("Started reconciliation")
 
 	// Step 1: Apply defaults to unset fields
 	defaults.ApplyDefaults(nfs)
@@ -124,19 +123,28 @@ func (r *reconciler) Reconcile(ctx context.Context, nfs *cachev1alpha1.NFSProvis
 	SetProgressingConditionFalse(nfs, generation)
 	SetDegradedConditionFalse(nfs, generation)
 	nfs.Status.Phase = PhaseReady
-	nfs.Status.ObservedGeneration = generation
 
 	// Step 5: Check Deployment availability and set Available condition
+	deploymentAvailable := IsDeploymentAvailable(ctx, r.client, nfs)
 	if err := SetAvailableCondition(ctx, r.client, nfs, generation); err != nil {
-		log.V(1).Info("Failed to check Deployment availability", "error", err.Error())
-		// Non-critical error - deployment may not exist yet
+		log.V(1).Info("Deployment not found yet, will requeue", "error", err.Error())
+	}
+
+	// Only set ObservedGeneration when fully complete (including Deployment available).
+	// This allows the ObservedGeneration guard to let requeued reconciles through.
+	if deploymentAvailable {
+		nfs.Status.ObservedGeneration = generation
 	}
 
 	// Step 6: Update final status
 	if err := r.updateStatus(ctx, nfs); err != nil {
 		log.Error(err, "Failed to update final status")
-		// Return error to trigger retry
 		return ctrl.Result{}, err
+	}
+
+	if !deploymentAvailable {
+		log.Info("Resources created, waiting for Deployment to become available")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	log.Info("Reconciliation completed successfully", "phase", nfs.Status.Phase)
@@ -155,7 +163,19 @@ func (r *reconciler) Reconcile(ctx context.Context, nfs *cachev1alpha1.NFSProvis
 // Returns:
 //   - error: Non-nil if the status update fails
 func (r *reconciler) updateStatus(ctx context.Context, nfs *cachev1alpha1.NFSProvisioner) error {
-	if err := r.client.Status().Update(ctx, nfs); err != nil {
+	// Re-fetch latest to avoid conflict with concurrent modifications (e.g., finalizer).
+	// On failure, controller-runtime automatically retries the full Reconcile with a fresh object.
+	latest := &cachev1alpha1.NFSProvisioner{}
+	if err := r.client.Get(ctx, client.ObjectKeyFromObject(nfs), latest); err != nil {
+		return err
+	}
+
+	latest.Status.Phase = nfs.Status.Phase
+	latest.Status.Conditions = nfs.Status.Conditions
+	latest.Status.ObservedGeneration = nfs.Status.ObservedGeneration
+	latest.Status.Nodes = nfs.Status.Nodes
+
+	if err := r.client.Status().Update(ctx, latest); err != nil {
 		r.logger.Error(err, "Failed to update NFSProvisioner status",
 			"namespace", nfs.Namespace,
 			"name", nfs.Name,
@@ -181,7 +201,7 @@ func (r *reconciler) handleValidationError(ctx context.Context, nfs *cachev1alph
 	SetProgressingConditionFalse(nfs, generation)
 	SetDegradedConditionForValidation(nfs, generation, err)
 	nfs.Status.Phase = PhaseFailed
-	nfs.Status.ObservedGeneration = generation
+	// Do NOT set ObservedGeneration on error - it means "successfully processed"
 
 	// Update status to reflect validation error
 	if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
@@ -214,12 +234,10 @@ func (r *reconciler) handleResourceError(ctx context.Context, nfs *cachev1alpha1
 		SetReadyConditionFalse(nfs, generation, ReasonResourceError, fmt.Sprintf("Failed to create/update %s: %v", resourceName, err))
 		SetDegradedCondition(nfs, generation, err)
 		nfs.Status.Phase = PhaseProgressing // Still progressing, will retry
-		nfs.Status.ObservedGeneration = generation
 
 		// Update status
 		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
 			r.logger.Error(updateErr, "Failed to update status after transient error")
-			// Return original error - controller-runtime will retry
 		}
 
 		// Return error to trigger exponential backoff
@@ -239,7 +257,6 @@ func (r *reconciler) handleResourceError(ctx context.Context, nfs *cachev1alpha1
 		SetProgressingConditionFalse(nfs, generation)
 		SetDegradedConditionForResource(nfs, generation, resourceName, err)
 		nfs.Status.Phase = PhaseFailed
-		nfs.Status.ObservedGeneration = generation
 
 		// Update status
 		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
@@ -263,7 +280,6 @@ func (r *reconciler) handleResourceError(ctx context.Context, nfs *cachev1alpha1
 		SetReadyConditionFalse(nfs, generation, ReasonResourceError, fmt.Sprintf("Failed to create/update %s: %v", resourceName, err))
 		SetDegradedCondition(nfs, generation, err)
 		nfs.Status.Phase = PhaseProgressing
-		nfs.Status.ObservedGeneration = generation
 
 		// Update status
 		if updateErr := r.updateStatus(ctx, nfs); updateErr != nil {
@@ -336,21 +352,6 @@ func classifyError(err error) errorType {
 		return errorTypePermanent
 	}
 
-	// Check for corev1.Event creation errors (can be ignored)
-	if isEventError(err) {
-		return errorTypeTransient
-	}
-
 	// Unknown errors - treat as transient
 	return errorTypeTransient
-}
-
-// isEventError checks if the error is related to Event creation.
-// Event creation failures are non-critical and should not block reconciliation.
-func isEventError(err error) bool {
-	// Simple heuristic: check if error message contains "Event"
-	// More sophisticated check could use error wrapping
-	errMsg := err.Error()
-	return errMsg != "" && (len(errMsg) >= 5 && errMsg[0:5] == "Event" ||
-		len(errMsg) > 10 && errMsg[len(errMsg)-5:] == "Event")
 }

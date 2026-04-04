@@ -30,6 +30,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	"github.com/jooho/nfs-provisioner-operator/pkg/defaults"
 	"github.com/jooho/nfs-provisioner-operator/pkg/reconciler"
@@ -51,6 +57,7 @@ type NFSProvisionerReconciler struct {
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
 // +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
@@ -79,24 +86,27 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Failed to get NFSProvisioner")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	// Handle deletion with finalizer
 	const finalizerName = "nfsprovisioner.finalizers.jhouse.io"
 	if nfsprovisioner.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted
-		if !containsString(nfsprovisioner.GetFinalizers(), finalizerName) {
+		if !controllerutil.ContainsFinalizer(nfsprovisioner, finalizerName) {
 			log.Info("Adding Finalizer for the NFSProvisioner")
 			controllerutil.AddFinalizer(nfsprovisioner, finalizerName)
 			if err := r.Update(ctx, nfsprovisioner); err != nil {
 				log.Error(err, "Failed to update CR NFSProvisioner to add finalizer")
 				return ctrl.Result{}, err
 			}
+			// Requeue immediately - the predicate filters metadata-only updates
+			// so the Update won't trigger a new reconcile event automatically.
+			return ctrl.Result{Requeue: true}, nil
 		}
 	} else {
 		// The object is being deleted
-		if containsString(nfsprovisioner.ObjectMeta.Finalizers, finalizerName) {
+		if controllerutil.ContainsFinalizer(nfsprovisioner, finalizerName) {
 			// Handle external resource deletion
 			if err := r.deleteExternalResources(ctx, nfsprovisioner); err != nil {
 				log.Error(err, "Failed to delete external resources")
@@ -159,19 +169,27 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(ctx context.Context, 
 	return nil
 }
 
-// Helper functions to check and remove string from a slice of strings.
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
 
 // SetupWithManager return error
 func (r *NFSProvisionerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Filter for the primary resource (NFSProvisioner):
+	// skip status-only updates, allow create/delete/spec changes.
+	nfsPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cachev1alpha1.NFSProvisioner{}).
+		For(&cachev1alpha1.NFSProvisioner{}, builder.WithPredicates(nfsPredicate)).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.ServiceAccount{}).
 		Complete(r)
 }

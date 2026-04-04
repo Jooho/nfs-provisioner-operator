@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
@@ -87,11 +88,10 @@ var _ = Describe("Reconciler", func() {
 			// Create reconciler
 			reconciler := NewReconciler(fakeClient, validator, managers, logr.Discard())
 
-			// Reconcile
+			// Reconcile - will requeue because Deployment has no available replicas in fake client
 			result, err := reconciler.Reconcile(ctx, nfsProvisioner)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Requeue).To(BeFalse())
-			Expect(result.RequeueAfter).To(BeZero())
+			Expect(result.RequeueAfter).To(Equal(10 * time.Second))
 
 			// Verify status was updated
 			updatedNFS := &cachev1alpha1.NFSProvisioner{}
@@ -100,7 +100,8 @@ var _ = Describe("Reconciler", func() {
 
 			// Verify status fields
 			Expect(updatedNFS.Status.Phase).To(Equal(PhaseReady))
-			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(1)))
+			// ObservedGeneration is 0 because Deployment has no available replicas in fake client
+			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(0)))
 
 			// Verify Ready condition
 			readyCondition := findCondition(updatedNFS.Status.Conditions, ConditionTypeReady)
@@ -149,7 +150,8 @@ var _ = Describe("Reconciler", func() {
 
 			// Verify status reflects validation error
 			Expect(updatedNFS.Status.Phase).To(Equal(PhaseFailed))
-			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(1)))
+			// ObservedGeneration should NOT be set on error (only on success)
+			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(0)))
 
 			// Verify Ready condition is false
 			readyCondition := findCondition(updatedNFS.Status.Conditions, ConditionTypeReady)
@@ -277,13 +279,17 @@ var _ = Describe("Reconciler", func() {
 			Expect(result.Requeue).To(BeFalse())
 
 			// Simulate CR update (change generation)
-			nfsProvisioner.Generation = 2
-			nfsProvisioner.Spec.StorageSize = "20Gi"
-			err = fakeClient.Update(ctx, nfsProvisioner)
-			Expect(err).NotTo(HaveOccurred())
+			latestNFS := &cachev1alpha1.NFSProvisioner{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(nfsProvisioner), latestNFS)).To(Succeed())
+			latestNFS.Generation = 2
+			latestNFS.Spec.StorageSize = "20Gi"
+			Expect(fakeClient.Update(ctx, latestNFS)).To(Succeed())
 
-			// Second reconcile
-			result, err = reconciler.Reconcile(ctx, nfsProvisioner)
+			// Re-fetch after update to get current resourceVersion
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(nfsProvisioner), latestNFS)).To(Succeed())
+
+			// Second reconcile with fresh object
+			result, err = reconciler.Reconcile(ctx, latestNFS)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Requeue).To(BeFalse())
 
@@ -292,7 +298,8 @@ var _ = Describe("Reconciler", func() {
 			err = fakeClient.Get(ctx, client.ObjectKeyFromObject(nfsProvisioner), updatedNFS)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(2)))
+			// ObservedGeneration is 0 because Deployment has no available replicas in fake client
+			Expect(updatedNFS.Status.ObservedGeneration).To(Equal(int64(0)))
 			Expect(updatedNFS.Status.Phase).To(Equal(PhaseReady))
 		})
 	})

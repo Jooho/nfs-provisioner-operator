@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
+	"github.com/jooho/nfs-provisioner-operator/pkg/defaults"
 )
 
 // Condition types for NFSProvisioner
@@ -234,7 +235,7 @@ func SetDegradedConditionForResource(nfs *cachev1alpha1.NFSProvisioner, generati
 func SetAvailableCondition(ctx context.Context, k8sClient client.Client, nfs *cachev1alpha1.NFSProvisioner, generation int64) error {
 	// Query the Deployment to check replica status
 	deployment := &appsv1.Deployment{}
-	deploymentName := nfs.Name + "-nfs-provisioner"
+	deploymentName := defaults.Deployment
 	err := k8sClient.Get(ctx, client.ObjectKey{
 		Namespace: nfs.Namespace,
 		Name:      deploymentName,
@@ -274,4 +275,16 @@ func SetAvailableCondition(ctx context.Context, k8sClient client.Client, nfs *ca
 	}
 
 	return nil
+}
+
+// IsDeploymentAvailable checks if the NFS provisioner Deployment has available replicas.
+func IsDeploymentAvailable(ctx context.Context, k8sClient client.Client, nfs *cachev1alpha1.NFSProvisioner) bool {
+	deployment := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, client.ObjectKey{
+		Namespace: nfs.Namespace,
+		Name:      defaults.Deployment,
+	}, deployment); err != nil {
+		return false
+	}
+	return deployment.Status.AvailableReplicas > 0
 }

@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	"github.com/jooho/nfs-provisioner-operator/controllers"
 	pkgreconciler "github.com/jooho/nfs-provisioner-operator/pkg/reconciler"
@@ -53,6 +54,7 @@ func init() {
 
 	// Add 3rd API Scheme
 	utilruntime.Must(securityv1.AddToScheme(scheme))
+	utilruntime.Must(apiextensionsv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

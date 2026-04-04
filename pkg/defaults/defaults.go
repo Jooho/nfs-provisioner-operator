@@ -51,7 +51,7 @@ const (
 	NFSImage = "registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8"
 
 	// NFSImagePullPolicy is the default pull policy for NFS provisioner image
-	NFSImagePullPolicy = corev1.PullAlways
+	NFSImagePullPolicy = corev1.PullIfNotPresent
 )
 
 // NodeSelector is for the node where NFS server will be running
