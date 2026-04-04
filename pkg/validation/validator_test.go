@@ -58,16 +58,14 @@ var _ = Describe("Validator", func() {
 
 	// T018: Test invalid configurations (multiple/zero storage options)
 	Describe("Invalid configurations", func() {
-		It("should reject when no storage option is set", func(ctx SpecContext) {
+		It("should accept when no storage option is set (uses default StorageClass)", func(ctx SpecContext) {
 			nfs := &cachev1alpha1.NFSProvisioner{
 				Spec: cachev1alpha1.NFSProvisionerSpec{
-					// No storage options set
+					// No storage options set - operator uses cluster default SC
 				},
 			}
 			err := validator.Validate(nfs)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("exactly one of spec.hostPathDir, spec.pvc, or spec.scForNFSPvc must be set"))
-			Expect(err.Error()).To(ContainSubstring("none are set"))
+			Expect(err).NotTo(HaveOccurred())
 		}, SpecTimeout(10*time.Second))
 
 		It("should reject when both hostPathDir and pvc are set", func(ctx SpecContext) {

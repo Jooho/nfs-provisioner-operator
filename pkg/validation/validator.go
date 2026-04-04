@@ -69,12 +69,8 @@ func (v *validator) validateStorageOptions(nfs *cachev1alpha1.NFSProvisioner) er
 		setCount++
 	}
 
-	if setCount == 0 {
-		return &ValidationError{
-			Field:   "spec.storage",
-			Message: "exactly one of spec.hostPathDir, spec.pvc, or spec.scForNFSPvc must be set; currently none are set",
-		}
-	}
+	// When none are set, the operator uses the cluster's default StorageClass
+	// to dynamically provision PVC storage for the NFS server.
 
 	if setCount > 1 {
 		return &ValidationError{

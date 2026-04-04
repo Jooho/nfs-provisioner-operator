@@ -127,10 +127,13 @@ func BuildServiceAccount(nfs *cachev1alpha1.NFSProvisioner) *corev1.ServiceAccou
 	return sa
 }
 
-// BuildPVC constructs a PVC for NFS server storage (if spec.scForNFSPvc is set).
-// Returns nil if PVC should not be created.
+// BuildPVC constructs a PVC for NFS server storage.
+// Returns nil if hostPathDir or an existing pvc is specified (no PVC creation needed).
+// When scForNFSPvc is set, uses that StorageClass.
+// When no storage option is set, StorageClassName is nil so Kubernetes uses the default SC.
 func BuildPVC(nfs *cachev1alpha1.NFSProvisioner) *corev1.PersistentVolumeClaim {
-	if nfs.Spec.SCForNFSPvc == "" {
+	// Skip PVC creation when using hostPath or an existing PVC
+	if nfs.Spec.HostPathDir != "" || nfs.Spec.Pvc != "" {
 		return nil
 	}
 
@@ -145,14 +148,18 @@ func BuildPVC(nfs *cachev1alpha1.NFSProvisioner) *corev1.PersistentVolumeClaim {
 			Namespace: nfs.Namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: &nfs.Spec.SCForNFSPvc,
-			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: parseQuantity(storageSize),
 				},
 			},
 		},
+	}
+
+	// If scForNFSPvc is specified, use it; otherwise leave nil for default SC
+	if nfs.Spec.SCForNFSPvc != "" {
+		pvc.Spec.StorageClassName = &nfs.Spec.SCForNFSPvc
 	}
 
 	return pvc
@@ -327,12 +334,11 @@ func labelsForNFSProvisioner(name string) map[string]string {
 
 // determineStorageType returns the storage type based on NFSProvisioner spec
 func determineStorageType(nfs *cachev1alpha1.NFSProvisioner) string {
-	if nfs.Spec.Pvc != "" {
-		return "PVC"
-	} else if nfs.Spec.SCForNFSPvc != "" {
-		return "PVC"
+	if nfs.Spec.HostPathDir != "" {
+		return "HostPath"
 	}
-	return "HostPath"
+	// PVC mode: explicit pvc name, explicit SC, or default SC (none set)
+	return "PVC"
 }
 
 // getVolumeSpec returns the appropriate volume source based on storage type
