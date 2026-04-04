@@ -75,13 +75,6 @@ spec:
             description: NFSProvisionerStatus defines the observed state of NFSProvisioner
             properties:
               conditions:
-                description: |-
-                  Conditions represent the latest available observations of the NFSProvisioner's state
-                  Standard condition types:
-                  - Ready: Indicates whether the NFSProvisioner is ready to serve requests
-                  - Progressing: Indicates whether the NFSProvisioner is being reconciled
-                  - Degraded: Indicates whether the NFSProvisioner is experiencing issues
-                  - Available: Indicates whether the Deployment has available replicas
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -137,36 +130,16 @@ spec:
                   - type
                   type: object
                 type: array
-                x-kubernetes-list-map-keys:
-                - type
-                x-kubernetes-list-type: map
               error:
-                description: |-
-                  Error contains error message if the NFSProvisioner is in failed state
-                  Deprecated: Use Conditions instead
                 type: string
               nodes:
-                description: |-
-                  Nodes contains the list of nodes where NFS server pods are running
-                  Deprecated: This information should be retrieved from the Deployment status
                 items:
                   type: string
                 type: array
               observedGeneration:
-                description: |-
-                  ObservedGeneration is the generation last observed by the controller.
-                  This is used to determine if the controller has processed the latest changes.
                 format: int64
                 type: integer
               phase:
-                description: |-
-                  Phase represents the current phase of the NFSProvisioner lifecycle.
-                  Valid values are: Pending, Progressing, Ready, Failed
-                enum:
-                - Pending
-                - Progressing
-                - Ready
-                - Failed
                 type: string
             type: object
         type: object

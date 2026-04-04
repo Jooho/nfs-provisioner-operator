@@ -1,0 +1,187 @@
+# Release Process
+
+Agentic release pipeline for the NFS Provisioner Operator. The process is driven by Claude Code using the `/operator-release` skill — the agent executes each phase and pauses at 3 human approval gates.
+
+## Quick Start
+
+```bash
+# Full release (agent-driven with human approval gates)
+/operator-release 0.0.10
+
+# Preview what would happen (no changes made)
+/operator-release 0.0.10 --dry-run
+
+# Build and push only, skip community-operators PRs
+/operator-release 0.0.10 --skip-pr
+```
+
+## Prerequisites
+
+Run before starting a release:
+
+```bash
+make validate-release
+```
+
+This checks:
+- `podman` logged into `quay.io`
+- `gh` CLI authenticated
+- `opm`, `kustomize` available
+- Community operator fork repos cloned and up-to-date
+
+Fork repos must be at:
+- `~/temp/20260213_SPECKIT/k8s-community-operators`
+- `~/temp/20260213_SPECKIT/community-operators-prod`
+
+## Pipeline Overview
+
+```
+Phase 0: Prerequisites ──→ Phase 1: Verify (unit tests)
+    │
+    ▼
+Phase 2: Version Bump (make bump-version)
+    │
+    ▼
+ ┌─ G1: Version Review ─────────────────────────┐
+ │  Shows: git diff of all version changes       │
+ │  Approve → continue  │  Reject → revert all   │
+ └───────────────────────────────────────────────┘
+    │
+    ▼
+Phase 3: Image Build (operator + bundle)
+    │
+    ▼
+ ┌─ G2: Push Approval ──────────────────────────┐
+ │  Shows: image names and tags to push          │
+ │  Approve → push  │  Reject → keep local only  │
+ └───────────────────────────────────────────────┘
+    │
+    ▼
+Phase 4: Post-Push (digest update + FBC catalog)
+    │
+    ▼
+Phase 5: Commit (release: v{VERSION})
+    │
+    ▼
+ ┌─ G3: PR Approval ────────────────────────────┐
+ │  Shows: target repos and PR titles            │
+ │  Approve → create PRs  │  Reject → skip PRs   │
+ └───────────────────────────────────────────────┘
+    │
+    ▼
+Phase 6: Submit PRs (k8s-operatorhub + community-operators-prod)
+    │
+    ▼
+Phase 7: Summary Report
+```
+
+## What Each Phase Does
+
+### Phase 0: Prerequisites
+- Runs `make validate-release`
+- Reads current VERSION from `env` file
+- Confirms release version with user
+
+### Phase 1: Verify
+- Runs `/operator-verify --scope unit` to ensure tests pass
+
+### Phase 2: Version Bump
+```bash
+make bump-version NEW_VERSION=0.0.10 PRIOR_VERSION=0.0.9
+```
+Updates:
+- `env` and `env.sh` — VERSION field
+- `config/manifests/bases/` CSV — `replaces` field
+- Runs `make bundle` to regenerate bundle manifests
+- Syncs CRDs from `config/crd/bases/` to `bundle/manifests/`
+
+### Phase 3: Image Build & Push
+Builds and pushes to quay.io:
+- `quay.io/jooholee/nfs-provisioner-operator:{VERSION}`
+- `quay.io/jooholee/nfs-provisioner-operator-bundle:{VERSION}`
+
+### Phase 4: Post-Push Updates
+- Captures operator image digest from registry
+- Updates digest references in `env`, CSV, `kustomization.yaml`
+- Re-runs `make bundle` to propagate digest
+- Generates FBC catalog: `opm render ./bundle` + channel update
+- Builds and pushes catalog image
+- Validates with `opm validate catalog/`
+
+### Phase 5: Commit
+```bash
+git commit -S -s -m "release: v{VERSION}"
+```
+
+### Phase 6: Community Operators PRs
+Creates PRs to:
+- `k8s-operatorhub/community-operators` — standard bundle format
+- `redhat-openshift-ecosystem/community-operators-prod` — FBC format with catalog data across OCP versions
+
+### Phase 7: Summary Report
+Displays all completed actions, image URLs, and PR links.
+
+## Approval Gates
+
+| Gate | Before | On Reject |
+|------|--------|-----------|
+| G1: Version Review | Image build | Revert all file changes |
+| G2: Push Approval | Image push | Keep images local only |
+| G3: PR Approval | PR creation | Keep commit local, no PRs |
+
+The process can be safely aborted at any gate without leaving partial state.
+
+## Manual Version Bump
+
+To bump version without running the full pipeline:
+
+```bash
+# Actual bump
+make bump-version NEW_VERSION=0.0.10 PRIOR_VERSION=0.0.9
+
+# Dry run (preview only)
+make bump-version NEW_VERSION=0.0.10 PRIOR_VERSION=0.0.9 DRY_RUN=true
+```
+
+## Verification Before Release
+
+```bash
+# Full verification (unit + integration + e2e + olm)
+/operator-verify
+
+# Quick check
+/operator-verify --scope unit
+
+# E2E on Kind
+/operator-verify --scope e2e
+
+# OLM deploy + upgrade test (requires Kind with local registry)
+/operator-verify --scope olm
+```
+
+## Rollback
+
+If something goes wrong after release:
+
+```bash
+# Revert the release commit
+git revert HEAD
+
+# Delete remote branches in fork repos
+git push origin --delete nfs-provisioner-operator-{VERSION}
+
+# Close PRs
+gh pr close <PR_NUMBER> --repo k8s-operatorhub/community-operators
+gh pr close <PR_NUMBER> --repo redhat-openshift-ecosystem/community-operators-prod
+```
+
+## Files Modified During Release
+
+| File | What changes |
+|------|-------------|
+| `env`, `env.sh` | VERSION, digest |
+| `config/manifests/bases/...csv.yaml` | replaces, containerImage digest |
+| `config/manager/kustomization.yaml` | image digest |
+| `bundle/manifests/...csv.yaml` | auto-generated by `make bundle` |
+| `catalog/.../channel.yaml` | new entry + replaces |
+| `catalog/.../v{VERSION}.yaml` | new file (opm render) |
