@@ -114,6 +114,16 @@ coverage-report: ## Generate and open HTML coverage report.
 	go tool cover -html=cover.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
+.PHONY: test-e2e
+test-e2e: ## Run E2E tests on Kind (requires: kind cluster + local registry at localhost:5001).
+	kubectl apply -f config/crd/bases/
+	go test ./test/e2e/ -v -timeout 10m -count=1
+
+.PHONY: test-e2e-ocp
+test-e2e-ocp: ## Run E2E tests on OpenShift (requires: oc login to OCP cluster).
+	oc apply -f config/crd/bases/
+	E2E_PLATFORM=ocp go test ./test/e2e/ -v -timeout 10m -count=1
+
 ##@ Build
 
 .PHONY: build
