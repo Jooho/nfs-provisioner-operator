@@ -57,7 +57,7 @@ func platformConfig() (hostPathDir, image string) {
 	return "/tmp/nfs-e2e", "localhost:5001/nfs-provisioner:v4.0.8"
 }
 
-var _ = Describe("NFS Provisioner E2E", Ordered, func() {
+var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
 
 	BeforeAll(func(ctx SpecContext) {
 		By("creating e2e test namespace")
@@ -297,6 +297,184 @@ var _ = Describe("NFS Provisioner E2E", Ordered, func() {
 		}, SpecTimeout(timeout))
 	})
 })
+
+// ─── scForNFSPvc mode (StorageClass-backed) ───────────────────────────
+
+const scNamespace = "e2e-nfs-sc-test"
+
+var _ = Describe("NFS Provisioner E2E - scForNFSPvc mode", Ordered, func() {
+	var scDeploymentReady bool
+
+	BeforeAll(func(ctx SpecContext) {
+		By("creating test namespace")
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: scNamespace},
+		}
+		err := k8sClient.Create(ctx, ns)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	}, NodeTimeout(30*time.Second))
+
+	AfterAll(func(ctx SpecContext) {
+		By("cleaning up scForNFSPvc test resources")
+		nfs := &cachev1alpha1.NFSProvisioner{
+			ObjectMeta: metav1.ObjectMeta{Name: "e2e-nfs-sc", Namespace: scNamespace},
+		}
+		_ = k8sClient.Delete(ctx, nfs)
+		Eventually(func() bool {
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Name: "e2e-nfs-sc", Namespace: scNamespace,
+			}, &cachev1alpha1.NFSProvisioner{})
+			return errors.IsNotFound(err)
+		}, "30s", "1s").Should(BeTrue())
+
+		_ = k8sClient.Delete(ctx, &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{Name: defaults.ClusterRole},
+		})
+		_ = k8sClient.Delete(ctx, &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: defaults.ClusterRoleBinding},
+		})
+		_ = k8sClient.Delete(ctx, &storagev1.StorageClass{
+			ObjectMeta: metav1.ObjectMeta{Name: defaults.SCForNFSProvisioner},
+		})
+		_ = k8sClient.Delete(ctx, &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "e2e-sc-pvc", Namespace: scNamespace},
+		})
+		_ = k8sClient.Delete(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: scNamespace},
+		})
+	}, NodeTimeout(60*time.Second))
+
+	Context("create CR with scForNFSPvc (no node prep needed)", func() {
+		It("should create NFS server PVC and all resources using default StorageClass", func(ctx SpecContext) {
+			_, image := platformConfig()
+			pullPolicy := corev1.PullAlways
+			defaultSC := getDefaultStorageClass()
+
+			By(fmt.Sprintf("creating NFSProvisioner CR with scForNFSPvc=%s", defaultSC))
+			nfs := &cachev1alpha1.NFSProvisioner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "e2e-nfs-sc",
+					Namespace: scNamespace,
+				},
+				Spec: cachev1alpha1.NFSProvisionerSpec{
+					SCForNFSPvc: defaultSC,
+					StorageSize: "1Gi",
+					NFSImageConfiguration: &cachev1alpha1.ImageConfiguration{
+						Image:           &image,
+						ImagePullPolicy: &pullPolicy,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, nfs)).To(Succeed())
+
+			nfsKey := types.NamespacedName{Name: "e2e-nfs-sc", Namespace: scNamespace}
+
+			By("verifying status reaches Ready")
+			Eventually(func(g Gomega) {
+				latest := &cachev1alpha1.NFSProvisioner{}
+				g.Expect(k8sClient.Get(ctx, nfsKey, latest)).To(Succeed())
+				readyCond := apimeta.FindStatusCondition(latest.Status.Conditions, reconciler.ConditionTypeReady)
+				g.Expect(readyCond).NotTo(BeNil())
+				g.Expect(readyCond.Status).To(Equal(metav1.ConditionTrue))
+				g.Expect(latest.Status.Phase).To(Equal(reconciler.PhaseReady))
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+
+			By("verifying NFS server PVC was created with correct StorageClass")
+			Eventually(func(g Gomega) {
+				pvc := &corev1.PersistentVolumeClaim{}
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{
+					Name: defaults.Pvc, Namespace: scNamespace,
+				}, pvc)).To(Succeed())
+				g.Expect(pvc.Spec.StorageClassName).NotTo(BeNil())
+				g.Expect(*pvc.Spec.StorageClassName).To(Equal(defaultSC))
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+
+			By("verifying Deployment and Service exist")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: defaults.Deployment, Namespace: scNamespace,
+			}, &appsv1.Deployment{})).To(Succeed())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: defaults.Service, Namespace: scNamespace,
+			}, &corev1.Service{})).To(Succeed())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: defaults.SCForNFSProvisioner,
+			}, &storagev1.StorageClass{})).To(Succeed())
+		}, SpecTimeout(timeout))
+	})
+
+	Context("NFS server readiness with PVC storage", func() {
+		It("should have the NFS server pod running", func(ctx SpecContext) {
+			Eventually(func(g Gomega) {
+				dep := &appsv1.Deployment{}
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{
+					Name: defaults.Deployment, Namespace: scNamespace,
+				}, dep)).To(Succeed())
+				g.Expect(dep.Status.AvailableReplicas).To(BeNumerically(">=", 1))
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+
+			scDeploymentReady = true
+		}, SpecTimeout(timeout))
+	})
+
+	Context("NFS volume provisioning with PVC-backed server", func() {
+		It("should provision a PV via NFS StorageClass", func(ctx SpecContext) {
+			if !scDeploymentReady {
+				Skip("NFS server not ready")
+			}
+
+			scName := defaults.SCForNFSProvisioner
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "e2e-sc-pvc",
+					Namespace: scNamespace,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: &scName,
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("100Mi"),
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				foundPVC := &corev1.PersistentVolumeClaim{}
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{
+					Name: "e2e-sc-pvc", Namespace: scNamespace,
+				}, foundPVC)).To(Succeed())
+				g.Expect(foundPVC.Status.Phase).To(Equal(corev1.ClaimBound))
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+		}, SpecTimeout(timeout))
+	})
+})
+
+// ─── Helper functions ─────────────────────────────────────────────────
+
+// getDefaultStorageClass returns the name of the default StorageClass in the cluster.
+// Falls back to "standard" (Kind default) if no default is found.
+func getDefaultStorageClass() string {
+	out, err := exec.Command("kubectl", "get", "storageclass",
+		"-o", "jsonpath={.items[?(@.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class==\"true\")].metadata.name}").CombinedOutput()
+	if err == nil {
+		name := strings.TrimSpace(string(out))
+		if name != "" {
+			// Take first if multiple
+			return strings.Fields(name)[0]
+		}
+	}
+	// Fallback
+	if isOCP() {
+		return "gp3-csi"
+	}
+	return "standard"
+}
 
 // ─── Node preparation helpers ─────────────────────────────────────────
 
