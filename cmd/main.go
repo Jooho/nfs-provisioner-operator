@@ -32,13 +32,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	cachev1alpha1 "github.com/jooho/nfs-provisioner-operator/api/v1alpha1"
 	"github.com/jooho/nfs-provisioner-operator/controllers"
 	pkgreconciler "github.com/jooho/nfs-provisioner-operator/pkg/reconciler"
 	"github.com/jooho/nfs-provisioner-operator/pkg/resources"
 	"github.com/jooho/nfs-provisioner-operator/pkg/validation"
 	securityv1 "github.com/openshift/api/security/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -146,18 +146,18 @@ func main() {
 	}
 	// +kubebuilder:scaffold:builder
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+	if healthErr := mgr.AddHealthzCheck("healthz", healthz.Ping); healthErr != nil {
+		setupLog.Error(healthErr, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+	if readyErr := mgr.AddReadyzCheck("readyz", healthz.Ping); readyErr != nil {
+		setupLog.Error(readyErr, "unable to set up ready check")
 		os.Exit(1)
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+	if startErr := mgr.Start(ctrl.SetupSignalHandler()); startErr != nil {
+		setupLog.Error(startErr, "problem running manager")
 		os.Exit(1)
 	}
 }

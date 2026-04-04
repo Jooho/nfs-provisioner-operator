@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -74,9 +75,9 @@ func (m *RBACManager) ensureClusterRole(ctx context.Context, nfsProvisioner *cac
 		cr := builder.BuildClusterRole()
 		m.Log.Info("Creating ClusterRole", "clusterrole.name", cr.Name)
 
-		if err := m.Client.Create(ctx, cr); err != nil {
-			m.Log.Error(err, "Failed to create ClusterRole", "clusterrole.name", cr.Name)
-			return err
+		if createErr := m.Client.Create(ctx, cr); createErr != nil {
+			m.Log.Error(createErr, "Failed to create ClusterRole", "clusterrole.name", cr.Name)
+			return createErr
 		}
 		m.Log.Info("Successfully created ClusterRole", "clusterrole.name", cr.Name)
 	} else if err != nil {
@@ -97,9 +98,9 @@ func (m *RBACManager) ensureClusterRoleBinding(ctx context.Context, nfsProvision
 		crb := builder.BuildClusterRoleBinding(nfsProvisioner)
 		m.Log.Info("Creating ClusterRoleBinding", "clusterrolebinding.name", crb.Name)
 
-		if err := m.Client.Create(ctx, crb); err != nil {
-			m.Log.Error(err, "Failed to create ClusterRoleBinding", "clusterrolebinding.name", crb.Name)
-			return err
+		if createErr := m.Client.Create(ctx, crb); createErr != nil {
+			m.Log.Error(createErr, "Failed to create ClusterRoleBinding", "clusterrolebinding.name", crb.Name)
+			return createErr
 		}
 		m.Log.Info("Successfully created ClusterRoleBinding", "clusterrolebinding.name", crb.Name)
 	} else if err != nil {
@@ -120,9 +121,8 @@ func (m *RBACManager) ensureRole(ctx context.Context, nfsProvisioner *cachev1alp
 		role := builder.BuildRole(nfsProvisioner)
 
 		// Set NFSProvisioner instance as the owner and controller
-		if err := ctrl.SetControllerReference(nfsProvisioner, role, m.Scheme); err != nil {
-			m.Log.Error(err, "Failed to set controller reference on Role")
-			return err
+		if refErr := ctrl.SetControllerReference(nfsProvisioner, role, m.Scheme); refErr != nil {
+			return fmt.Errorf("failed to set controller reference on Role: %w", refErr)
 		}
 
 		m.Log.Info("Creating Role", "role.namespace", role.Namespace, "role.name", role.Name)
@@ -149,9 +149,8 @@ func (m *RBACManager) ensureRoleBinding(ctx context.Context, nfsProvisioner *cac
 		roleBinding := builder.BuildRoleBinding(nfsProvisioner)
 
 		// Set NFSProvisioner instance as the owner and controller
-		if err := ctrl.SetControllerReference(nfsProvisioner, roleBinding, m.Scheme); err != nil {
-			m.Log.Error(err, "Failed to set controller reference on RoleBinding")
-			return err
+		if refErr := ctrl.SetControllerReference(nfsProvisioner, roleBinding, m.Scheme); refErr != nil {
+			return fmt.Errorf("failed to set controller reference on RoleBinding: %w", refErr)
 		}
 
 		m.Log.Info("Creating RoleBinding", "rolebinding.namespace", roleBinding.Namespace, "rolebinding.name", roleBinding.Name)

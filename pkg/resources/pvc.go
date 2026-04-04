@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -63,9 +64,8 @@ func (m *PVCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 		}
 
 		// Set NFSProvisioner instance as the owner and controller
-		if err := ctrl.SetControllerReference(nfsProvisioner, pvc, m.Scheme); err != nil {
-			log.Error(err, "Failed to set controller reference on PVC")
-			return err
+		if refErr := ctrl.SetControllerReference(nfsProvisioner, pvc, m.Scheme); refErr != nil {
+			return fmt.Errorf("failed to set controller reference on PVC: %w", refErr)
 		}
 
 		log.Info("Creating PersistentVolumeClaim", "pvc.namespace", pvc.Namespace, "pvc.name", pvc.Name)

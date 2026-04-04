@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -96,9 +97,9 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if !controllerutil.ContainsFinalizer(nfsprovisioner, finalizerName) {
 			log.Info("Adding Finalizer for the NFSProvisioner")
 			controllerutil.AddFinalizer(nfsprovisioner, finalizerName)
-			if err := r.Update(ctx, nfsprovisioner); err != nil {
-				log.Error(err, "Failed to update CR NFSProvisioner to add finalizer")
-				return ctrl.Result{}, err
+			if updateErr := r.Update(ctx, nfsprovisioner); updateErr != nil {
+				log.Error(updateErr, "Failed to update CR NFSProvisioner to add finalizer")
+				return ctrl.Result{}, updateErr
 			}
 			// Requeue immediately - the predicate filters metadata-only updates
 			// so the Update won't trigger a new reconcile event automatically.
@@ -107,27 +108,28 @@ func (r *NFSProvisionerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	} else {
 		// The object is being deleted
 		if controllerutil.ContainsFinalizer(nfsprovisioner, finalizerName) {
-			// Handle external resource deletion
-			if err := r.deleteExternalResources(ctx, nfsprovisioner); err != nil {
-				log.Error(err, "Failed to delete external resources")
-				return ctrl.Result{}, err
+			if deleteErr := r.deleteExternalResources(ctx, nfsprovisioner); deleteErr != nil {
+				log.Error(deleteErr, "Failed to delete external resources")
+				return ctrl.Result{}, deleteErr
 			}
 
-			// Remove finalizer
 			log.Info("Removing Finalizer for the NFSProvisioner")
 			controllerutil.RemoveFinalizer(nfsprovisioner, finalizerName)
-			if err := r.Update(ctx, nfsprovisioner); err != nil {
-				log.Error(err, "Failed to update CR NFSProvisioner to remove finalizer")
-				return ctrl.Result{}, err
+			if updateErr := r.Update(ctx, nfsprovisioner); updateErr != nil {
+				log.Error(updateErr, "Failed to update CR NFSProvisioner to remove finalizer")
+				return ctrl.Result{}, updateErr
 			}
 		}
 
-		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
 	}
 
 	// Delegate to pkg/reconciler for main reconciliation logic
-	return r.Reconciler.Reconcile(ctx, nfsprovisioner)
+	result, reconcileErr := r.Reconciler.Reconcile(ctx, nfsprovisioner)
+	if reconcileErr != nil {
+		return result, fmt.Errorf("reconcile failed: %w", reconcileErr)
+	}
+	return result, nil
 }
 
 // Delete any external resources associated with the nfs server
@@ -168,7 +170,6 @@ func (r *NFSProvisionerReconciler) deleteExternalResources(ctx context.Context, 
 
 	return nil
 }
-
 
 // SetupWithManager return error
 func (r *NFSProvisionerReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -60,6 +60,7 @@ linters-settings:
     disabled-checks:
       - hugeParam  # controller-runtime uses large structs
       - rangeValCopy  # acceptable in some cases
+      - ifElseChain  # if/else with IsNotFound is idiomatic in K8s operators
       - commentedOutCode  # Will be addressed during refactoring
 
   errcheck:
@@ -80,7 +81,7 @@ linters-settings:
       - name: exported
         arguments:
           - "checkPrivateReceivers"
-          - "sayRepetitiveInsteadOfStutters"
+          - "disableStutteringCheck"
 
   gosec:
     excludes:

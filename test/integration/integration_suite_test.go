@@ -121,7 +121,6 @@ var _ = BeforeSuite(func(suiteCtx SpecContext) {
 		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
-
 }, NodeTimeout(60*time.Second))
 
 var _ = AfterSuite(func() {

@@ -59,9 +59,9 @@ func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 		scc := builder.BuildSCC(nfsProvisioner)
 		log.Info("Creating SecurityContextConstraints", "scc.name", scc.Name)
 
-		if err := m.Client.Create(ctx, scc); err != nil {
-			log.Error(err, "Failed to create SecurityContextConstraints", "scc.name", scc.Name)
-			return err
+		if createErr := m.Client.Create(ctx, scc); createErr != nil {
+			log.Error(createErr, "Failed to create SecurityContextConstraints", "scc.name", scc.Name)
+			return createErr
 		}
 		log.Info("Successfully created SecurityContextConstraints", "scc.name", scc.Name)
 		return nil
@@ -85,9 +85,9 @@ func (m *SCCManager) EnsureResource(ctx context.Context, nfsProvisioner *cachev1
 		sccFound.Users = append(sccFound.Users, userToAdd)
 		log.Info("Adding user to SecurityContextConstraints", "scc.name", sccFound.Name, "user", userToAdd)
 
-		if err := m.Client.Update(ctx, sccFound); err != nil {
-			log.Error(err, "Failed to update SecurityContextConstraints", "scc.name", sccFound.Name)
-			return err
+		if updateErr := m.Client.Update(ctx, sccFound); updateErr != nil {
+			log.Error(updateErr, "Failed to update SecurityContextConstraints", "scc.name", sccFound.Name)
+			return updateErr
 		}
 		log.Info("Successfully updated SecurityContextConstraints", "scc.name", sccFound.Name)
 	} else {

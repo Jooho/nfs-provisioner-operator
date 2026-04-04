@@ -114,6 +114,10 @@ coverage-report: ## Generate and open HTML coverage report.
 	go tool cover -html=cover.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
+.PHONY: precommit
+precommit: vet lint ## Pre-commit check: vet + lint + unit tests.
+	go test ./pkg/... -timeout 2m -count=1
+
 .PHONY: test-e2e
 test-e2e: ## Run E2E tests on Kind (requires: kind cluster + local registry at localhost:5001).
 	kubectl apply -f config/crd/bases/

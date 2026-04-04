@@ -131,14 +131,13 @@ var _ = Describe("SCC Detection", func() {
 		AfterEach(func(ctx SpecContext) {
 			// Clean up SCC CRD
 			if sccCRD != nil {
-				err := k8sClient.Delete(ctx, sccCRD)
-				if err == nil {
-					// Wait for deletion
+				deleteErr := k8sClient.Delete(ctx, sccCRD)
+				if deleteErr == nil {
 					Eventually(func() bool {
-						err := k8sClient.Get(ctx, types.NamespacedName{
+						getErr := k8sClient.Get(ctx, types.NamespacedName{
 							Name: sccCRD.Name,
 						}, sccCRD)
-						return err != nil
+						return getErr != nil
 					}, "10s", "1s").Should(BeTrue())
 				}
 			}

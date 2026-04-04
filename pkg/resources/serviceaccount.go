@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -46,9 +47,8 @@ func (m *ServiceAccountManager) EnsureResource(ctx context.Context, nfsProvision
 		sa := builder.BuildServiceAccount(nfsProvisioner)
 
 		// Set NFSProvisioner instance as the owner and controller
-		if err := ctrl.SetControllerReference(nfsProvisioner, sa, m.Scheme); err != nil {
-			log.Error(err, "Failed to set controller reference on ServiceAccount")
-			return err
+		if refErr := ctrl.SetControllerReference(nfsProvisioner, sa, m.Scheme); refErr != nil {
+			return fmt.Errorf("failed to set controller reference on ServiceAccount: %w", refErr)
 		}
 
 		log.Info("Creating ServiceAccount", "serviceaccount.namespace", sa.Namespace, "serviceaccount.name", sa.Name)

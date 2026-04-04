@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -46,9 +47,8 @@ func (m *DeploymentManager) EnsureResource(ctx context.Context, nfsProvisioner *
 		dep := builder.BuildDeployment(nfsProvisioner)
 
 		// Set NFSProvisioner instance as the owner and controller
-		if err := ctrl.SetControllerReference(nfsProvisioner, dep, m.Scheme); err != nil {
-			log.Error(err, "Failed to set controller reference on Deployment")
-			return err
+		if refErr := ctrl.SetControllerReference(nfsProvisioner, dep, m.Scheme); refErr != nil {
+			return fmt.Errorf("failed to set controller reference on Deployment: %w", refErr)
 		}
 
 		log.Info("Creating Deployment", "deployment.namespace", dep.Namespace, "deployment.name", dep.Name)

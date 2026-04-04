@@ -47,13 +47,11 @@ func (m *StorageClassManager) EnsureResource(ctx context.Context, nfsProvisioner
 	scFound := &storagev1.StorageClass{}
 	err := m.Client.Get(ctx, types.NamespacedName{Name: scName, Namespace: ""}, scFound)
 	if err != nil && errors.IsNotFound(err) {
-		// Build StorageClass using builder
 		sc := builder.BuildStorageClass(nfsProvisioner)
-
 		log.Info("Creating StorageClass", "storageclass.name", sc.Name)
-		if err = m.Client.Create(ctx, sc); err != nil {
-			log.Error(err, "Failed to create StorageClass", "storageclass.name", sc.Name)
-			return err
+		if createErr := m.Client.Create(ctx, sc); createErr != nil {
+			log.Error(createErr, "Failed to create StorageClass", "storageclass.name", sc.Name)
+			return createErr
 		}
 		log.Info("Successfully created StorageClass", "storageclass.name", sc.Name)
 	} else if err != nil {

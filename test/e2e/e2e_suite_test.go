@@ -115,7 +115,6 @@ var _ = BeforeSuite(func(suiteCtx SpecContext) {
 		defer GinkgoRecover()
 		Expect(mgr.Start(ctx)).To(Succeed(), "failed to run manager")
 	}()
-
 }, NodeTimeout(60*time.Second))
 
 var _ = AfterSuite(func() {

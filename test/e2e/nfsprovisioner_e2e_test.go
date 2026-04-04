@@ -58,7 +58,6 @@ func platformConfig() (hostPathDir, image string) {
 }
 
 var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
-
 	BeforeAll(func(ctx SpecContext) {
 		By("creating e2e test namespace")
 		ns := &corev1.Namespace{
@@ -171,7 +170,6 @@ var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name: defaults.ClusterRoleBinding,
 			}, &rbacv1.ClusterRoleBinding{})).To(Succeed())
-
 		}, SpecTimeout(timeout))
 	})
 
@@ -288,12 +286,12 @@ var _ = Describe("NFS Provisioner E2E - hostPathDir mode", Ordered, func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, types.NamespacedName{Name: defaults.ClusterRole}, &rbacv1.ClusterRole{})
 				return errors.IsNotFound(err)
-			}).WithContext(ctx).WithTimeout(30*time.Second).WithPolling(interval).Should(BeTrue())
+			}).WithContext(ctx).WithTimeout(30 * time.Second).WithPolling(interval).Should(BeTrue())
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, types.NamespacedName{Name: defaults.ClusterRoleBinding}, &rbacv1.ClusterRoleBinding{})
 				return errors.IsNotFound(err)
-			}).WithContext(ctx).WithTimeout(30*time.Second).WithPolling(interval).Should(BeTrue())
+			}).WithContext(ctx).WithTimeout(30 * time.Second).WithPolling(interval).Should(BeTrue())
 		}, SpecTimeout(timeout))
 	})
 })
@@ -500,7 +498,7 @@ func prepareOCPNodes() {
 
 	// Create directory and set SELinux context via oc debug
 	script := "chroot /host bash -c 'mkdir -p /home/core/nfs && chcon -Rvt svirt_sandbox_file_t /home/core/nfs'"
-	out, err := exec.Command("oc", "debug", "node/"+targetNode, "-n", e2eNamespace, "--", "bash", "-c", script).CombinedOutput()
+	out, err := exec.Command("oc", "debug", "node/"+targetNode, "-n", e2eNamespace, "--", "bash", "-c", script).CombinedOutput() //nolint:gosec // test helper with controlled input
 	Expect(err).NotTo(HaveOccurred(), "failed to prepare OCP node: "+string(out))
 
 	// Label the node
@@ -520,7 +518,7 @@ func findWorkerNode() string {
 	out, err := exec.Command(cmd, "get", "nodes",
 		"-l", "!node-role.kubernetes.io/control-plane",
 		"-o", "jsonpath={.items[*].metadata.name}").CombinedOutput()
-	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+	if err == nil && strings.TrimSpace(string(out)) != "" {
 		return strings.Fields(strings.TrimSpace(string(out)))[0]
 	}
 
@@ -528,7 +526,7 @@ func findWorkerNode() string {
 	out, err = exec.Command(cmd, "get", "nodes",
 		"-l", "node-role.kubernetes.io/worker",
 		"-o", "jsonpath={.items[*].metadata.name}").CombinedOutput()
-	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+	if err == nil && strings.TrimSpace(string(out)) != "" {
 		return strings.Fields(strings.TrimSpace(string(out)))[0]
 	}
 

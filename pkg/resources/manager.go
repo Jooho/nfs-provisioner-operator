@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,7 +59,7 @@ func (r *ResourceManagerSet) EnsureAllResources(ctx context.Context, nfsProvisio
 	// Process each manager
 	for _, manager := range managers {
 		if err := manager.EnsureResource(ctx, nfsProvisioner); err != nil {
-			return err
+			return fmt.Errorf("ensure %s: %w", manager.GetResourceName(), err)
 		}
 	}
 
