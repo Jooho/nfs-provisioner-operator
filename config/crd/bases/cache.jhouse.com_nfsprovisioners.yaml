@@ -41,6 +41,10 @@ spec:
             properties:
               hostPathDir:
                 type: string
+              mountOptions:
+                items:
+                  type: string
+                type: array
               nfsImageConfiguration:
                 description: ImageConfiguration holds configuration of the image to
                   use
