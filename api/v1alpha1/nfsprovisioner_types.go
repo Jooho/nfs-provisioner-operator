@@ -30,6 +30,7 @@ type NFSProvisionerSpec struct {
 	StorageSize           string              `json:"storageSize,omitempty"`
 	SCForNFSPvc           string              `json:"scForNFSPvc,omitempty"`
 	SCForNFSProvisioner   string              `json:"scForNFS,omitempty"`
+	MountOptions          []string            `json:"mountOptions,omitempty"`
 }
 
 // NFSProvisionerStatus defines the observed state of NFSProvisioner

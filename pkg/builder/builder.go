@@ -176,7 +176,8 @@ func BuildStorageClass(nfs *cachev1alpha1.NFSProvisioner) *storagev1.StorageClas
 		ObjectMeta: metav1.ObjectMeta{
 			Name: scName,
 		},
-		Provisioner: "example.com/nfs",
+		Provisioner:  "example.com/nfs",
+		MountOptions: nfs.Spec.MountOptions,
 	}
 
 	return sc
